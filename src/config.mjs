@@ -10,8 +10,8 @@ export function integer(value, name, min, max) {
 }
 export function safeFile(name) {
   return typeof name === 'string' && name.length < 200 && /^[a-zA-Z0-9_][a-zA-Z0-9_./-]*$/.test(name)
-    && !name.split('/').some(p => p === '..' || p === '.' || !p)
-    && !name.startsWith('__skilldelta') && !name.split('/').some(p => /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(p));
+    && !name.split('/').some(p => p.endsWith('.') || !p)
+    && !name.toLowerCase().startsWith('__skilldelta') && !name.split('/').some(p => /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(p));
 }
 export async function readSmall(file, limit = 256 * 1024) {
   if ((await stat(file)).size > limit) throw new Error(`File is too large: ${path.basename(file)}`);

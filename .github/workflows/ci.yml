@@ -28,6 +28,8 @@ jobs:
           package-manager-cache: false
       - name: Unit tests
         run: node --test
+      - name: Pack and install the release in a clean directory
+        run: npm run test:package
       - name: Run the deterministic demo
         run: node bin/skilldelta.mjs demo
       - name: Upload demo report

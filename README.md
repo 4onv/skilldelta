@@ -13,11 +13,18 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Version 0.1 evaluates **single-turn code generation** through a compatible chat-completions endpoint. It does not run a complete coding agent, install a skill into an agent, or measure multi-turn tool use.
+Version 0.2 adds an installable CLI, project setup, and local readiness checks. It evaluates **single-turn code generation** through a compatible chat-completions endpoint. It does not run a complete coding agent, install a skill into an agent, or measure multi-turn tool use.
 
 ## Try it in a minute
 
-Install [Node.js 22 or newer](https://nodejs.org/), then:
+Install [Node.js 22 or newer](https://nodejs.org/) and download `4onv-skilldelta-0.2.0.tgz` from the [v0.2.0 GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.2.0). From the download directory:
+
+```sh
+npm install -g ./4onv-skilldelta-0.2.0.tgz
+skilldelta demo
+```
+
+The package is named `@4onv/skilldelta` and is distributed as a GitHub release artifact; it has **not been published to npm**. You can also run directly from source without installing dependencies:
 
 ```sh
 git clone https://github.com/4onv/skilldelta.git
@@ -25,7 +32,7 @@ cd skilldelta
 node bin/skilldelta.mjs demo
 ```
 
-Open `.skilldelta/demo/report.html` in your browser. There is no dependency-install step, API key, or Docker requirement for the demo.
+Open `.skilldelta/demo/report.html` in your browser. The demo needs neither an API key nor Docker.
 
 **The demo uses simulated model outputs and real tests.** Its bundled examples deliberately produce **1/3 passing tasks without the skill and 3/3 with it**. Those numbers demonstrate the reporting workflow; they are not evidence that this skill improves any model.
 
@@ -35,21 +42,37 @@ You can also download and open the [sample report](examples/sample-report.html).
 
 You need a running Docker installation with Linux containers and a provider exposing a compatible `/v1/chat/completions` endpoint. Live runs may incur provider charges.
 
-Set `SKILLDELTA_API_KEY` in your shell. Keep the key out of source files and command-line arguments. Then inspect the planned run:
+Create an editable evaluation project:
 
 ```sh
-node bin/skilldelta.mjs run --suite examples/suite.json --skill examples/edge-cases/SKILL.md --model YOUR_MODEL --endpoint https://YOUR_PROVIDER/v1/chat/completions --trials 3 --dry-run
+skilldelta init my-evaluation
+cd my-evaluation
 ```
 
-Remove `--dry-run` to execute it:
+This creates `skilldelta.config.json` and a `skilldelta/` directory containing a starter skill and three executable tasks. Existing files are not overwritten. Set `model` and `endpoint` in the config; both start as `null` so you choose the provider explicitly. If your provider needs authentication, set `SKILLDELTA_API_KEY` in your shell. Keep credentials out of config files and command-line arguments.
 
 ```sh
-node bin/skilldelta.mjs run --suite examples/suite.json --skill examples/edge-cases/SKILL.md --model YOUR_MODEL --endpoint https://YOUR_PROVIDER/v1/chat/completions --trials 3 --out .skilldelta/run
+skilldelta doctor
+skilldelta run --dry-run
+```
+
+`doctor` checks local configuration, Node.js, Docker, image availability, and key presence. It does not contact a provider or pull an image. `run --dry-run` validates the evaluation and planned call count without using Docker or a provider. You can also supply the model and endpoint as overrides:
+
+```sh
+skilldelta run --model YOUR_MODEL --endpoint https://YOUR_PROVIDER/v1/chat/completions --trials 3 --dry-run
+```
+
+Once configured, execute the evaluation:
+
+```sh
+skilldelta run
 ```
 
 Three tasks × three trials × two conditions means **18 model calls**. Both conditions use the same task prompt, starter files, and test suite. Only the skill condition receives the skill text. Test source is withheld from the model request.
 
-See [the evaluation guide](docs/evaluation.md) for suite authoring, methodology, and limitations, or [the CLI reference](docs/cli.md) for options.
+`run` and `doctor` discover `skilldelta.config.json` in the current directory, or accept `--config FILE`. Paths in the config are relative to that file. Command-line flags override config values; command-line paths are relative to your current directory.
+
+See [the evaluation guide](docs/evaluation.md) for suite authoring, methodology, and limitations, [the CLI reference](docs/cli.md) for options, or [the packaging guide](docs/packaging.md) for installation and artifact verification.
 
 ## Read the result
 
@@ -64,7 +87,7 @@ A positive delta means more complete task trials passed with the skill. It does 
 Rebuild a report from saved results:
 
 ```sh
-node bin/skilldelta.mjs report .skilldelta/demo/results.json --out .skilldelta/rebuilt
+skilldelta report .skilldelta/demo/results.json --out .skilldelta/rebuilt
 ```
 
 Add `--fail-on-regression` to a live run when you want a negative pass-rate delta to fail your automation. Treat that as your chosen gate, not a statistical test.
@@ -73,10 +96,13 @@ Add `--fail-on-regression` to a live run when you want a negative pass-rate delt
 
 ```sh
 node --test
+npm run test:package
 node bin/skilldelta.mjs demo
 ```
 
-The CI workflow is configured to run the unit tests and demo on Windows and Ubuntu with Node.js 22 and 24. A separate Ubuntu job exercises Docker verification without calling a paid model.
+CI runs the unit tests, demo, and a packed-package installation smoke test on Windows and Ubuntu with Node.js 22 and 24. The artifact check installs into a clean temporary prefix and exercises the installed commands. A separate Ubuntu job exercises Docker verification without calling a paid model.
+
+Results are saved when a run finishes. Checkpoint/resume, graceful interruption, run history/comparison, a reusable GitHub Action, and real agent adapters remain future work.
 
 Useful contributions include representative task suites, endpoint compatibility fixes, and clearer failure diagnostics. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before adding a runner or publishing reports.
 
