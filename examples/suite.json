@@ -1,0 +1,38 @@
+{
+  "name": "JavaScript edge cases",
+  "tasks": [
+    {
+      "id": "slugify",
+      "title": "Slugify Unicode titles",
+      "prompt": "Implement the named export slugify(value) in solution.mjs. value must be a string; otherwise throw TypeError. Normalize the string with Unicode NFKD, remove all Unicode combining marks (\\p{M}), lowercase it, replace every run of characters other than ASCII a-z and 0-9 with one hyphen, and remove leading/trailing hyphens. Return an empty string when no ASCII letters or digits remain. Do not transliterate characters beyond what NFKD supplies. Examples: '  Hello, World!  ' -> 'hello-world'; 'Crème brûlée' -> 'creme-brulee'; '東京' -> ''. Export no side effects and do not mutate input data.",
+      "starter": {
+        "solution.mjs": "export function slugify(value) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": ["solution.mjs"],
+      "testFile": "tasks/slugify.checks.mjs",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "chunk",
+      "title": "Chunk arrays without mutation",
+      "prompt": "Implement the named export chunk(items, size) in solution.mjs. items must be an Array; otherwise throw TypeError. size must be a positive safe integer (Number.isSafeInteger(size) && size > 0); otherwise throw RangeError. Return a new array of new subarrays containing at most size consecutive elements each. Preserve order and element identity, leave items unchanged, and include a shorter final subarray if necessary. For an empty input return []. Validate arguments even if items is empty. Examples: chunk([1, 2, 3], 2) -> [[1, 2], [3]]; chunk([], 3) -> [].",
+      "starter": {
+        "solution.mjs": "export function chunk(items, size) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": ["solution.mjs"],
+      "testFile": "tasks/chunk.checks.mjs",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "unique-by",
+      "title": "Deduplicate by arbitrary keys",
+      "prompt": "Implement the named export uniqueBy(items, keyFn) in solution.mjs. items must be an Array and keyFn must be a function; otherwise throw TypeError. Call keyFn(item, index) exactly once for each element in input order. Return a new array containing only the first item for each distinct returned key. Compare keys using SameValueZero semantics, as Set does: NaN equals NaN, +0 equals -0, different object references are distinct, the same object reference is equal, and the number 1 is distinct from the string '1'. Preserve the original order and item references, do not mutate items, and propagate any error thrown by keyFn. Empty input returns [] but must still validate keyFn.",
+      "starter": {
+        "solution.mjs": "export function uniqueBy(items, keyFn) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": ["solution.mjs"],
+      "testFile": "tasks/uniqueBy.checks.mjs",
+      "timeoutMs": 10000
+    }
+  ]
+}

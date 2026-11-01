@@ -1,0 +1,26 @@
+{
+  "slugify": {
+    "baseline": {
+      "solution.mjs": "export function slugify(value) {\n  if (typeof value !== 'string') throw new TypeError('Expected a string');\n  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');\n}\n"
+    },
+    "skill": {
+      "solution.mjs": "export function slugify(value) {\n  if (typeof value !== 'string') throw new TypeError('Expected a string');\n  return value.normalize('NFKD').replace(/\\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');\n}\n"
+    }
+  },
+  "chunk": {
+    "baseline": {
+      "solution.mjs": "export function chunk(items, size) {\n  if (!Array.isArray(items)) throw new TypeError('Expected an array');\n  if (!Number.isSafeInteger(size) || size <= 0) throw new RangeError('Expected a positive safe integer');\n  const result = [];\n  for (let i = 0; i < items.length; i += size) result.push(items.slice(i, i + size));\n  return result;\n}\n"
+    },
+    "skill": {
+      "solution.mjs": "export function chunk(items, size) {\n  if (!Array.isArray(items)) throw new TypeError('Expected an array');\n  if (!Number.isSafeInteger(size) || size <= 0) throw new RangeError('Expected a positive safe integer');\n  const result = [];\n  for (let i = 0; i < items.length; i += size) result.push(items.slice(i, i + size));\n  return result;\n}\n"
+    }
+  },
+  "unique-by": {
+    "baseline": {
+      "solution.mjs": "export function uniqueBy(items, keyFn) {\n  if (!Array.isArray(items) || typeof keyFn !== 'function') throw new TypeError('Expected an array and a function');\n  const seen = Object.create(null);\n  return items.filter((item, index) => {\n    const key = String(keyFn(item, index));\n    if (seen[key]) return false;\n    seen[key] = true;\n    return true;\n  });\n}\n"
+    },
+    "skill": {
+      "solution.mjs": "export function uniqueBy(items, keyFn) {\n  if (!Array.isArray(items) || typeof keyFn !== 'function') throw new TypeError('Expected an array and a function');\n  const seen = new Set();\n  return items.filter((item, index) => {\n    const key = keyFn(item, index);\n    if (seen.has(key)) return false;\n    seen.add(key);\n    return true;\n  });\n}\n"
+    }
+  }
+}
