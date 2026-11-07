@@ -1,6 +1,6 @@
 {
   "name": "@4onv/skilldelta",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Does your agent skill help? Paired coding evaluations with executable tests and shareable reports.",
   "type": "module",
   "license": "MIT",

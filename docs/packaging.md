@@ -4,10 +4,10 @@ SkillDelta uses Node.js built-in modules and requires Node.js 22 or newer. The p
 
 ## Install a GitHub release
 
-Download `4onv-skilldelta-0.2.0.tgz` from the [v0.2.0 release](https://github.com/4onv/skilldelta/releases/tag/v0.2.0), then run this from the download directory:
+Download `4onv-skilldelta-0.3.0.tgz` from the [v0.3.0 release](https://github.com/4onv/skilldelta/releases/tag/v0.3.0), then run this from the download directory:
 
 ```sh
-npm install -g ./4onv-skilldelta-0.2.0.tgz
+npm install -g ./4onv-skilldelta-0.3.0.tgz
 skilldelta --version
 skilldelta demo
 ```
@@ -15,7 +15,7 @@ skilldelta demo
 For an explicitly offline installation of the downloaded artifact:
 
 ```sh
-npm install -g ./4onv-skilldelta-0.2.0.tgz --offline --ignore-scripts --no-audit --no-fund
+npm install -g ./4onv-skilldelta-0.3.0.tgz --offline --ignore-scripts --no-audit --no-fund
 ```
 
 This package has **not been published to npm or another package registry**. The installation commands use a local GitHub release tarball, not a registry package. Do not substitute a similarly named package from a registry.
@@ -47,8 +47,8 @@ npm pack
 
 `test:package` packs the source, installs the resulting artifact offline into a clean temporary prefix, and exercises the installed executable, demo, project initialization, readiness diagnostics, and dry-run validation. It verifies packaged files rather than relying on a working source checkout. These checks make no provider requests and do not publish a package. CI runs this check on Windows and Ubuntu with Node.js 22 and 24.
 
-`npm pack` creates `4onv-skilldelta-0.2.0.tgz` for this version. Upload that tested artifact to the corresponding GitHub release. Creating or installing a tarball does not publish anything to npm.
+`npm pack` creates `4onv-skilldelta-0.3.0.tgz` for this version. Upload that tested artifact to the corresponding GitHub release. Creating or installing a tarball does not publish anything to npm.
 
 ## Current scope
 
-Version 0.2 provides an installable developer tool for single-turn paired code-generation evaluations, setup, readiness checks, executable verification, and portable reports. It does not include a complete agent runtime, resumable checkpoints, run history/comparison, or graceful interruption handling. Saved demo data is simulated and must not be presented as evidence of model performance.
+Version 0.3 provides an installable developer tool for single-turn paired code-generation evaluations, setup, readiness checks, executable verification, resumable checkpoints, graceful cancellation and portable reports. It does not include a complete agent runtime or run history/comparison. Saved demo data is simulated and must not be presented as evidence of model performance.

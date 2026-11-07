@@ -20,6 +20,8 @@ The configured provider receives the task prompt, starter files, and, for the sk
 
 Reports include task titles and run metadata. Review them before sharing. Keep credentials in `SKILLDELTA_API_KEY` or your CI secret store; do not paste them into a suite, skill, model identifier, endpoint URL, issue, or report.
 
+Live checkpoints contain the same outcome metadata and a fingerprint of evaluation inputs. They omit generated source, raw responses, keys, skill text and test source. Checkpoints are editable local progress records; resume validation establishes input compatibility and structural consistency, not independent proof that tests ran. Protect the output directory from untrusted writers. A cancelled provider request may still be processed or billed; interrupted attempts can be retried on resume.
+
 The bundled demo executes known fixture code locally. That convenience is not a supported path for executing untrusted model output on the host.
 
 ## Reporting a vulnerability

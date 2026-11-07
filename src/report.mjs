@@ -68,7 +68,7 @@ export function renderReport(report) {
   const skillTime = skillRuns.reduce((sum, run) => sum + Math.max(0, finite(run.durationMs)), 0);
   const taskCount = new Set(results.map((run) => run.taskId)).size;
   const complete = count(paired.wins) + count(paired.losses) + count(paired.ties);
-  const inconclusive = hasIncompletePairs(results);
+  const inconclusive = report.checkpoint?.complete === false || report.checkpoint?.expectedResults > results.length || hasIncompletePairs(results);
   const deltaTone = inconclusive ? 'inconclusive' : delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -126,7 +126,8 @@ document.getElementById('print').addEventListener('click', () => window.print())
 export function renderBadge(report) {
   const isDemo = report.mode === 'demo';
   const delta = finite(report.summary?.deltaPercentagePoints);
-  const inconclusive = hasIncompletePairs(report.results);
+  const results = Array.isArray(report.results) ? report.results : [];
+  const inconclusive = report.checkpoint?.complete === false || report.checkpoint?.expectedResults > results.length || hasIncompletePairs(results);
   const value = `${isDemo ? 'DEMO ' : ''}${inconclusive ? 'INCONCLUSIVE' : `${points(delta)} pp`}`;
   const width = inconclusive ? (isDemo ? 290 : 250) : isDemo ? 248 : 210;
   const rightWidth = width - 108;

@@ -25,7 +25,7 @@ try {
   assert.equal(packed?.name, metadata.name);
   assert.equal(path.basename(packed.filename), packed.filename);
   const artifact = path.join(directory, packed.filename);
-  for (const file of ['docs/cli.md','docs/packaging.md','SECURITY.md','CONTRIBUTING.md','src/onboarding.mjs','examples/tasks/chunk.checks.mjs']) assert.ok(packed.files.some(entry => entry.path === file), `Packed file missing: ${file}`);
+  for (const file of ['docs/cli.md','docs/packaging.md','SECURITY.md','CONTRIBUTING.md','src/onboarding.mjs','src/checkpoint.mjs','examples/tasks/chunk.checks.mjs']) assert.ok(packed.files.some(entry => entry.path === file), `Packed file missing: ${file}`);
   const prefix = path.join(directory, 'installed');
   run(npmCli, ['install','--prefix',prefix,'--offline','--ignore-scripts','--no-audit','--no-fund','--package-lock=false',artifact]);
   const installedRoot = path.join(prefix, 'node_modules', ...metadata.name.split('/'));
@@ -40,6 +40,9 @@ try {
   run(bin, ['demo','--out',path.join(directory,'demo')]);
   const report = JSON.parse(await readFile(path.join(directory,'demo/results.json'),'utf8'));
   assert.equal(report.mode,'demo'); assert.equal(report.summary.baseline.passed,1); assert.equal(report.summary.skill.passed,3);
+  assert.equal(report.checkpoint.complete,true); assert.equal(report.checkpoint.expectedResults,6);
+  assert.match(run(bin,['--help']),/--resume/);
+  assert.equal(run(bin,['--version']).trim(),metadata.version);
   console.log(`Package smoke passed: ${metadata.name}@${metadata.version}; clean offline install, bin, init, config dry-run, doctor, and real-test demo.`);
 } finally {
   const resolved = path.resolve(directory);

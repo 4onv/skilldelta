@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — 2026-11-07
+
+- Save every completed live attempt in an atomic checkpoint and resume only pending attempts with validated evaluation inputs.
+- Cancel provider requests and verifiers on SIGINT/SIGTERM, preserve partial results and mark incomplete reports/badges inconclusive.
+- Lock output directories and prevent live artifacts from accidental overwrite by fresh runs, demos or report rebuilds.
+- Exercise interruption and resume through the CLI with a local mock provider and real Docker; document hard-kill recovery and in-flight billing limits.
+
 ## 0.2.0 — 2026-11-01
 
 - Package the CLI as `@4onv/skilldelta`, distributed as a GitHub release tarball with the `skilldelta` executable. No npm registry publication.

@@ -5,8 +5,9 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { safeFile } from './config.mjs';
 
-export function command(executable, args, { timeoutMs = 30000, cwd, env = process.env } = {}) {
+export function command(executable, args, { timeoutMs = 30000, cwd, env = process.env, signal } = {}) {
   return new Promise(resolve => {
+    if (signal?.aborted) { resolve({ code: -1, output: '', timedOut: false, missing: false, aborted: true }); return; }
     const childEnv = { ...env };
     delete childEnv.NODE_TEST_CONTEXT;
     delete childEnv.NODE_OPTIONS;
@@ -14,21 +15,28 @@ export function command(executable, args, { timeoutMs = 30000, cwd, env = proces
     let output = '', timedOut = false, settled = false;
     const append = data => { if (output.length < 64000) output += data.toString().slice(0, 64000 - output.length); };
     child.stdout.on('data', append); child.stderr.on('data', append);
+    const abort = () => child.kill('SIGKILL');
+    signal?.addEventListener('abort', abort, { once: true });
     const timer = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, timeoutMs);
-    const finish = result => { if (!settled) { settled = true; clearTimeout(timer); resolve(result); } };
+    const finish = result => { if (!settled) { settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort); resolve({ ...result, aborted: Boolean(signal?.aborted) }); } };
     child.on('error', error => finish({ code: -1, output: '', timedOut, missing: error.code === 'ENOENT' }));
     child.on('close', code => finish({ code: code ?? -1, output, timedOut, missing: false }));
   });
 }
-export async function prepareDocker(image) {
+export async function prepareDocker(image, { signal } = {}) {
+  signal?.throwIfAborted();
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_./:@-]+$/.test(image)) throw new Error('Invalid Docker image reference.');
-  const info = await command('docker', ['info', '--format', '{{.OSType}}']);
+  const info = await command('docker', ['info', '--format', '{{.OSType}}'], { signal });
+  signal?.throwIfAborted();
   if (info.code !== 0 || !info.output.includes('linux')) throw new Error('Live runs need Docker with Linux containers. Start Docker and retry; `demo` works without Docker.');
-  let inspect = await command('docker', ['image', 'inspect', image, '--format', '{{.Id}}']);
+  let inspect = await command('docker', ['image', 'inspect', image, '--format', '{{.Id}}'], { signal });
+  signal?.throwIfAborted();
   if (inspect.code !== 0) {
-    const pulled = await command('docker', ['pull', image], { timeoutMs: 300000 });
+    const pulled = await command('docker', ['pull', image], { timeoutMs: 300000, signal });
+    signal?.throwIfAborted();
     if (pulled.code !== 0) throw new Error('Could not pull the test image. Pull it manually and retry.');
-    inspect = await command('docker', ['image', 'inspect', image, '--format', '{{.Id}}']);
+    inspect = await command('docker', ['image', 'inspect', image, '--format', '{{.Id}}'], { signal });
+    signal?.throwIfAborted();
   }
   const id = inspect.output.trim();
   if (inspect.code !== 0 || !/^sha256:[a-f0-9]{64}$/.test(id)) throw new Error('Could not resolve Docker image digest.');
@@ -38,7 +46,8 @@ export function dockerArgs({ directory, image, name }) {
   if (directory.includes(',')) throw new Error('Temporary directory path cannot contain commas (Docker mount syntax).');
   return ['run', '--rm', '--name', name, '--network', 'none', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', '256m', '--memory-swap', '256m', '--cpus', '1', '--pids-limit', '64', '--user', '65534:65534', '--tmpfs', '/tmp:rw,noexec,nosuid,size=16m', '--mount', `type=bind,source=${directory},target=/workspace,readonly`, '--workdir', '/workspace', '--entrypoint', 'node', image, '--test', '--test-reporter=tap', '__skilldelta.test.mjs'];
 }
-export async function checkFiles({ files, testSource, timeoutMs, image, demo = false }) {
+export async function checkFiles({ files, testSource, timeoutMs, image, demo = false, signal }) {
+  signal?.throwIfAborted();
   const directory = await mkdtemp(path.join(tmpdir(), 'skilldelta-'));
   const name = `skilldelta-${randomUUID()}`;
   let launched = false;
@@ -54,11 +63,12 @@ export async function checkFiles({ files, testSource, timeoutMs, image, demo = f
     let result;
     if (demo) {
       // Only the CLI's bundled, deterministic fixtures may use this path.
-      result = await command(process.execPath, ['--test', '--test-reporter=tap', '__skilldelta.test.mjs'], { cwd: directory, timeoutMs });
+      result = await command(process.execPath, ['--test', '--test-reporter=tap', '__skilldelta.test.mjs'], { cwd: directory, timeoutMs, signal });
     } else {
       launched = true;
-      result = await command('docker', dockerArgs({ directory, image, name }), { timeoutMs });
+      result = await command('docker', dockerArgs({ directory, image, name }), { timeoutMs, signal });
     }
+    signal?.throwIfAborted();
     if (result.timedOut) return { passed: false, status: 'failed', error: 'Test timeout exceeded.' };
     if (result.missing || result.code === 125 || result.code === 126 || result.code === 127) return { passed: false, status: 'error', error: 'Test runtime could not start.' };
     const completed = /^ok \d+ - __skilldelta_verifier_completed__\r?$/m.test(result.output);

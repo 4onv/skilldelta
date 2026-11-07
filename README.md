@@ -13,14 +13,14 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Version 0.2 adds an installable CLI, project setup, and local readiness checks. It evaluates **single-turn code generation** through a compatible chat-completions endpoint. It does not run a complete coding agent, install a skill into an agent, or measure multi-turn tool use.
+Version 0.3 saves completed attempts as it runs and resumes interrupted evaluations without repeating those attempts. It evaluates **single-turn code generation** through a compatible chat-completions endpoint. It does not run a complete coding agent, install a skill into an agent, or measure multi-turn tool use.
 
 ## Try it in a minute
 
-Install [Node.js 22 or newer](https://nodejs.org/) and download `4onv-skilldelta-0.2.0.tgz` from the [v0.2.0 GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.2.0). From the download directory:
+Install [Node.js 22 or newer](https://nodejs.org/) and download `4onv-skilldelta-0.3.0.tgz` from the [v0.3.0 GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.3.0). From the download directory:
 
 ```sh
-npm install -g ./4onv-skilldelta-0.2.0.tgz
+npm install -g ./4onv-skilldelta-0.3.0.tgz
 skilldelta demo
 ```
 
@@ -68,6 +68,14 @@ Once configured, execute the evaluation:
 skilldelta run
 ```
 
+Each completed attempt is saved atomically to `checkpoint.json`. Ctrl+C cancels the active request or verifier, preserves completed work, and writes an explicitly inconclusive partial report. Resume with the same configuration and output directory:
+
+```sh
+skilldelta run --resume
+```
+
+Resume validates the suite, skill, tests, model, endpoint, generation settings and resolved Docker image. Completed failures and provider errors are retained too. An interrupted in-flight attempt is retried and may have already incurred a provider charge. Use a new `--out` directory for a fresh evaluation. [Recovery details](docs/cli.md#interrupt-and-resume)
+
 Three tasks × three trials × two conditions means **18 model calls**. Both conditions use the same task prompt, starter files, and test suite. Only the skill condition receives the skill text. Test source is withheld from the model request.
 
 `run` and `doctor` discover `skilldelta.config.json` in the current directory, or accept `--config FILE`. Paths in the config are relative to that file. Command-line flags override config values; command-line paths are relative to your current directory.
@@ -79,6 +87,7 @@ See [the evaluation guide](docs/evaluation.md) for suite authoring, methodology,
 | Output | Purpose |
 | --- | --- |
 | `results.json` | Machine-readable results, task outcomes, timing, and reported token usage |
+| `checkpoint.json` | Live-run progress used by `run --resume`; updated after every completed attempt |
 | `report.html` | A standalone comparison with task filters and paired wins/losses/ties |
 | `badge.svg` | A small result badge suitable for a README |
 
@@ -102,7 +111,7 @@ node bin/skilldelta.mjs demo
 
 CI runs the unit tests, demo, and a packed-package installation smoke test on Windows and Ubuntu with Node.js 22 and 24. The artifact check installs into a clean temporary prefix and exercises the installed commands. A separate Ubuntu job exercises Docker verification without calling a paid model.
 
-Results are saved when a run finishes. Checkpoint/resume, graceful interruption, run history/comparison, a reusable GitHub Action, and real agent adapters remain future work.
+CI also interrupts and resumes the CLI using a local mock provider and real Docker verification, without paid model calls. Run history/comparison, a reusable GitHub Action, stronger benchmarks and real agent adapters remain future work.
 
 Useful contributions include representative task suites, endpoint compatibility fixes, and clearer failure diagnostics. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before adding a runner or publishing reports.
 

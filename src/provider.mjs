@@ -13,9 +13,10 @@ export function parseFiles(content, allowed) {
   if (entries.length !== allowed.length || entries.some(([name, text]) => !allowed.includes(name) || typeof text !== 'string' || Buffer.byteLength(text) > 256 * 1024)) throw new Error('Model must return exactly the editable files, each under 256 KiB.');
   return parsed.files;
 }
-export async function generate({ endpoint, key, model, maxOutputTokens, timeoutMs, task, skillText, fetchImpl = fetch }) {
+export async function generate({ endpoint, key, model, maxOutputTokens, timeoutMs, task, skillText, signal, fetchImpl = fetch }) {
+  const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
   const response = await fetchImpl(endpoint, {
-    method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
+    method: 'POST', redirect: 'error', signal: requestSignal,
     headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) },
     body: JSON.stringify({ model, messages: makeMessages(task, skillText), temperature: 0, max_tokens: maxOutputTokens })
   });

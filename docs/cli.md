@@ -97,6 +97,7 @@ Live runs require Docker with Linux containers. The selected Docker image must c
 | `--endpoint URL` | Full chat-completions endpoint; HTTPS is required except for loopback HTTP |
 | `--trials N` | Number of repetitions of each task in each condition; default `3`, range `1–100` |
 | `--out PATH` | Output directory; live runs default to `.skilldelta/run` |
+| `--resume` | Continue `checkpoint.json` in the selected output directory with matching evaluation inputs |
 | `--dry-run` | Validate inputs and show the planned call count without contacting the model or running Docker commands |
 | `--max-output-tokens N` | Maximum requested output tokens per generation; default `4096`, range `64–32768` |
 | `--timeout-ms N` | Model request timeout in milliseconds; default `120000`, range `1000–600000` |
@@ -122,7 +123,25 @@ The answer must include every editable file and no other files or top-level prop
 
 The seed changes whether a pair starts with the baseline or skill condition; the order alternates across tasks and trials. It is not sent as a model random seed and is not a promise of deterministic output. Model versions, provider behavior, and machine load can affect repeated runs.
 
-Results are saved at the end of the evaluation. Checkpoint/resume and graceful interruption handling are not implemented; an interrupted run can lose progress and may require manual Docker cleanup.
+### Interrupt and resume
+
+Live evaluations atomically replace `checkpoint.json` after every completed attempt. The checkpoint retains outcomes, timing, reported usage and hashed input identity. It contains no API key, raw response, generated code, test source or skill text. It is a trusted local progress file, not a signed proof of execution. Review task titles and other metadata before sharing it.
+
+Ctrl+C (`SIGINT`) or `SIGTERM` cancels the active provider request or test process. Docker verification performs container cleanup. Completed work is retained and a partial report is saved with an inconclusive verdict. Interrupted attempts are left pending. Resume with the same options/configuration and output directory:
+
+```sh
+skilldelta run --resume --out .skilldelta/run
+```
+
+Resume checks a fingerprint of the complete suite, skill, test contents, model, endpoint, seed, trial count, generation limits and resolved Docker image. A changed input is rejected before provider calls. The API key may rotate without invalidating progress. If an image tag now resolves differently, select the original image ID recorded in the saved `runtime` field or start a fresh run.
+
+Completed successes, test failures and provider errors are all skipped on resume. There is no automatic retry of recorded errors. A fully completed checkpoint makes no additional model calls. Start a fresh run in a new output directory to measure changed settings or retry all outcomes. `--resume --dry-run` validates configuration and prints the full planned count; it does not check checkpoint compatibility because image resolution requires Docker.
+
+This is attempt-level recovery, not exactly-once provider billing. A hard interruption after a request starts but before its outcome is saved may require that attempt again. The provider may continue or bill a cancelled request. Generated source is intentionally not checkpointed. A failure to save progress stops further requests.
+
+Every writer holds `run.lock` in its output directory. A live run refuses existing result artifacts unless `--resume` is supplied. Demo/report commands refuse to overwrite a directory containing a live checkpoint. Ordinary report-only or demo outputs may be regenerated. For a live report rebuild, choose a separate `--out` directory.
+
+After a hard kill or machine crash, `run.lock` can remain. Inspect its `host` and `pid`; only after confirming that process has stopped, remove that single lock file and run with `--resume`. If interruption happened during Docker preparation and no checkpoint exists yet, remove the verified-stale lock and start normally. Forced termination may also require manual removal of a leftover `skilldelta-*` Docker container. Automatic lock stealing is deliberately unsupported.
 
 ## `report`
 
@@ -130,7 +149,7 @@ Results are saved at the end of the evaluation. Checkpoint/resume and graceful i
 skilldelta report .skilldelta/run/results.json --out .skilldelta/rebuilt
 ```
 
-Recalculates the summary and writes `results.json`, `report.html`, and `badge.svg` from an existing result file without model calls or test execution. Without `--out`, it writes beside the input file. Existing output files at the destination are replaced. Review task titles and metadata before sharing any report.
+Recalculates the summary and writes `results.json`, `report.html`, and `badge.svg` from an existing result or checkpoint file without model calls or test execution. Without `--out`, it writes beside the input file, provided that directory has no live checkpoint. Use a separate `--out` to rebuild a live run. Existing ordinary report outputs are replaced under a directory lock. Incomplete checkpoints remain inconclusive. Review task titles and metadata before sharing any report.
 
 ## Exit codes
 
@@ -139,5 +158,6 @@ Recalculates the summary and writes `results.json`, `report.html`, and `badge.sv
 | `0` | Command completed; ordinary test failures alone do not make a comparison command fail |
 | `1` | The optional regression gate failed |
 | `2` | Invalid input, provider failure, execution error, or a failing `doctor` check |
+| `130` / `143` | Interrupted by SIGINT / SIGTERM; saved progress can be resumed once an evaluation has started |
 
 The JSON report retains individual outcomes so CI can implement a stricter project-specific policy. Use `skilldelta --help` for command help and `skilldelta --version` for the package version.
