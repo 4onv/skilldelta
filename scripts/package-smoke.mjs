@@ -42,6 +42,10 @@ try {
   assert.equal(report.mode,'demo'); assert.equal(report.summary.baseline.passed,1); assert.equal(report.summary.skill.passed,3);
   assert.equal(report.checkpoint.complete,true); assert.equal(report.checkpoint.expectedResults,6);
   assert.match(run(bin,['--help']),/--resume/);
+  assert.equal(JSON.parse(run(bin,['history',directory,'--json'])).runs.length,1);
+  run(bin,['demo','--out',path.join(directory,'second-demo')]);
+  const comparison=JSON.parse(run(bin,['compare',path.join(directory,'demo/results.json'),path.join(directory,'second-demo/results.json'),'--json','--fail-on-regression']));
+  assert.equal(comparison.status,'comparable');assert.equal(comparison.simulated,true);assert.equal(comparison.changes.skillEffectPercentagePoints,0);
   assert.equal(run(bin,['--version']).trim(),metadata.version);
   console.log(`Package smoke passed: ${metadata.name}@${metadata.version}; clean offline install, bin, init, config dry-run, doctor, and real-test demo.`);
 } finally {

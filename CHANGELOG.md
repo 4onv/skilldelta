@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-11-09
+
+- List saved results and checkpoints with read-only `history`, explicit scan bounds and invalid-file warnings.
+- Compare distinct evaluations across skill revisions using a fingerprint of all non-skill evaluation inputs; keep incomplete, errored and incompatible samples inconclusive.
+- Recompute outcomes instead of trusting saved summaries; expose baseline, skill and measured-effect changes separately, with an optional gate on effect regression.
+- Verify the installed history/compare workflow offline in the package smoke test. No provider calls or package-registry publication.
+
 ## 0.3.0 — 2026-11-07
 
 - Save every completed live attempt in an atomic checkpoint and resume only pending attempts with validated evaluation inputs.
@@ -15,7 +22,7 @@
 - Load project configuration automatically from the current directory or explicitly with `--config`. CLI flags override config values, and config paths resolve relative to the config file.
 - Include documentation and security guidance in the package, with a clean offline installation smoke test in the Windows/Ubuntu and Node.js 22/24 CI matrix.
 
-Checkpoint/resume, graceful interruption, run history/comparison, a reusable GitHub Action, and real agent adapters remain future work. The evaluation protocol remains single-turn code generation.
+Checkpoint/resume and history/comparison arrived in later releases. A reusable GitHub Action and real agent adapters remain future work. The evaluation protocol remains single-turn code generation.
 
 ## 0.1.0 — 2026-11-01
 

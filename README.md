@@ -13,14 +13,14 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Version 0.3 saves completed attempts as it runs and resumes interrupted evaluations without repeating those attempts. It evaluates **single-turn code generation** through a compatible chat-completions endpoint. It does not run a complete coding agent, install a skill into an agent, or measure multi-turn tool use.
+Version 0.4 adds saved-run history and comparisons between skill revisions. Completed attempts are saved as a run proceeds, and interrupted evaluations can resume. It evaluates **single-turn code generation** through a compatible chat-completions endpoint. It does not run a complete coding agent, install a skill into an agent, or measure multi-turn tool use.
 
 ## Try it in a minute
 
-Install [Node.js 22 or newer](https://nodejs.org/) and download `4onv-skilldelta-0.3.0.tgz` from the [v0.3.0 GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.3.0). From the download directory:
+Install [Node.js 22 or newer](https://nodejs.org/) and download `4onv-skilldelta-0.4.0.tgz` from the [v0.4.0 GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.4.0). From the download directory:
 
 ```sh
-npm install -g ./4onv-skilldelta-0.3.0.tgz
+npm install -g ./4onv-skilldelta-0.4.0.tgz
 skilldelta demo
 ```
 
@@ -101,6 +101,20 @@ skilldelta report .skilldelta/demo/results.json --out .skilldelta/rebuilt
 
 Add `--fail-on-regression` to a live run when you want a negative pass-rate delta to fail your automation. Treat that as your chosen gate, not a statistical test.
 
+## Compare saved evaluations
+
+Keep each evaluation in its own output folder. List saved runs, then compare two runs that used the same evaluation inputs:
+
+```sh
+skilldelta history .skilldelta
+skilldelta compare .skilldelta/before/results.json .skilldelta/after/results.json
+skilldelta compare .skilldelta/before/results.json .skilldelta/after/results.json --json --fail-on-regression
+```
+
+These commands read saved files without executing tests or contacting a model. History inspects the root and its immediate run folders, preferring the latest atomic checkpoint to a possibly older results file. Comparisons require fingerprints recorded by version 0.4 or newer. The skill can change; the suite, tests, endpoint, model, seed, trials, generation settings and resolved runtime must agree. Earlier results still appear in history but cannot establish input compatibility.
+
+The comparison separates baseline pass-rate change, skill pass-rate change and the change in the measured skill effect. `compare --fail-on-regression` exits 1 only when that last quantity decreases. Partial runs and provider/runtime errors stay inconclusive; incompatible inputs exit 2. Model randomness and provider drift remain possible even with matching fingerprints. Results are editable local observations, not signatures or statistical evidence. [Limits and examples](docs/cli.md#history-and-compare)
+
 ## Development
 
 ```sh
@@ -111,7 +125,7 @@ node bin/skilldelta.mjs demo
 
 CI runs the unit tests, demo, and a packed-package installation smoke test on Windows and Ubuntu with Node.js 22 and 24. The artifact check installs into a clean temporary prefix and exercises the installed commands. A separate Ubuntu job exercises Docker verification without calling a paid model.
 
-CI also interrupts and resumes the CLI using a local mock provider and real Docker verification, without paid model calls. Run history/comparison, a reusable GitHub Action, stronger benchmarks and real agent adapters remain future work.
+CI also interrupts and resumes the CLI using a local mock provider and real Docker verification, without paid model calls. A reusable GitHub Action, stronger benchmarks and real agent adapters remain future work.
 
 Useful contributions include representative task suites, endpoint compatibility fixes, and clearer failure diagnostics. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before adding a runner or publishing reports.
 

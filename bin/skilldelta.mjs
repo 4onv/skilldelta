@@ -9,6 +9,7 @@ import { runEvaluation, summarize } from '../src/runner.mjs';
 import { renderReport, renderBadge } from '../src/report.mjs';
 import { initialize, diagnose, loadProjectConfig, validateRunOptions } from '../src/onboarding.mjs';
 import { atomicJson, openRunDirectory, readCheckpoint } from '../src/checkpoint.mjs';
+import { compareEvaluations, listHistory } from '../src/history.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const onboardingHelp = `Project setup:\n  skilldelta init [DIRECTORY]       Create configuration and example tasks without overwriting files\n  skilldelta doctor [--json]        Check configuration, Node, Docker, and key presence (no API calls)\n  skilldelta run [--config FILE]    Load skilldelta.config.json automatically; CLI flags override it\n\nPaths in configuration are relative to the configuration file. Keys stay in SKILLDELTA_API_KEY.\n\n`;
@@ -33,13 +34,38 @@ async function save(report, out) {
 }
 async function main() {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: Object.fromEntries(['out','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image','config'].map(k => [k, { type: 'string' }]).concat(['help','version','dry-run','fail-on-regression','json','resume'].map(k => [k, { type: 'boolean' }]))) });
-  if (values.version) { console.log('0.3.0'); return; }
-  if (values.help || !positionals.length) { console.log(onboardingHelp + help); return; }
+  if (values.version) { console.log('0.4.0'); return; }
+  if (values.help || !positionals.length) { console.log(onboardingHelp + help + '\nSaved evaluations (read-only, no model calls):\n  skilldelta history [DIRECTORY] [--json]\n  skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]\nComparison requires matching evaluation inputs; only the skill may change.\n'); return; }
   const [command, input] = positionals;
-  if (!['demo','run','report','init','doctor'].includes(command)) throw new Error(`Unknown command: ${command}`);
-  if (positionals.length > (['report','init'].includes(command) ? 2 : 1)) throw new Error('Unexpected positional argument.');
-  const accepted = command === 'init' ? [] : command === 'doctor' ? ['config','json','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image'] : ['demo','report'].includes(command) ? ['out'] : ['out','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image','config','dry-run','fail-on-regression','resume'];
+  if (!['demo','run','report','init','doctor','history','compare'].includes(command)) throw new Error(`Unknown command: ${command}`);
+  if (positionals.length > (command==='compare'?3:['report','init','history'].includes(command)?2:1)) throw new Error('Unexpected positional argument.');
+  const accepted = command==='compare'?['json','fail-on-regression']:command==='history'?['json']:command === 'init' ? [] : command === 'doctor' ? ['config','json','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image'] : ['demo','report'].includes(command) ? ['out'] : ['out','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image','config','dry-run','fail-on-regression','resume'];
   for (const key of Object.keys(values)) if (!accepted.includes(key)) throw new Error(`--${key} is not valid for ${command}.`);
+  if(command==='history'){
+    const history=await listHistory(input??'.skilldelta');
+    if(values.json)console.log(JSON.stringify(history,null,2));
+    else {
+      const safe=value=>JSON.stringify(value);
+      console.log(history.scope);
+      for(const run of history.runs)console.log(`${safe(run.createdAt)} · ${run.mode.toUpperCase()} · ${run.completedResults}/${run.expectedResults} attempts · ${run.summary.verdict} · ${safe(run.file)}`);
+      for(const warning of history.warnings)console.log(`WARNING ${safe(warning.file)}: ${warning.message}`);
+      if(!history.runs.length)console.log('No valid saved evaluations found.');
+    }
+    return;
+  }
+  if(command==='compare'){
+    if(positionals.length!==3)throw new Error('Provide previous and current results/checkpoint files.');
+    const comparison=compareEvaluations(await readCheckpoint(input),await readCheckpoint(positionals[2]));
+    if(values.json)console.log(JSON.stringify(comparison,null,2));
+    else {
+      console.log(`${comparison.simulated?'SIMULATED DEMO · ':''}${comparison.status.toUpperCase()}`);
+      for(const reason of comparison.reasons)console.log(reason);
+      if(comparison.changes){const c=comparison.changes;console.log(`Baseline change: ${c.baselinePercentagePoints.toFixed(1)} pp\nSkill change: ${c.skillPercentagePoints.toFixed(1)} pp\nChange in measured skill effect: ${c.skillEffectPercentagePoints.toFixed(1)} pp\nObserved samples only; no statistical significance or deterministic-model claim.`);}
+    }
+    if(comparison.status!=='comparable')process.exitCode=2;
+    else if(values['fail-on-regression']&&comparison.changes.skillEffectPercentagePoints<0)process.exitCode=1;
+    return;
+  }
   if (command === 'init') {
     const initialized = await initialize(input ?? '.');
     console.log(`Created ${initialized.configPath}\nSet model and endpoint in that file, then run skilldelta doctor and skilldelta run --dry-run from the project directory.`); return;

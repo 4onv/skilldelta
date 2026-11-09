@@ -151,13 +151,43 @@ skilldelta report .skilldelta/run/results.json --out .skilldelta/rebuilt
 
 Recalculates the summary and writes `results.json`, `report.html`, and `badge.svg` from an existing result or checkpoint file without model calls or test execution. Without `--out`, it writes beside the input file, provided that directory has no live checkpoint. Use a separate `--out` to rebuild a live run. Existing ordinary report outputs are replaced under a directory lock. Incomplete checkpoints remain inconclusive. Review task titles and metadata before sharing any report.
 
+## History and compare
+
+```sh
+skilldelta history [DIRECTORY] [--json]
+skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]
+```
+
+The history directory defaults to `.skilldelta`. The command reads that directory and its immediate child directories, looking for `checkpoint.json` first, then `results.json`. It does not recurse into further descendants or follow symlinked files/folders. Up to 100 child folders and 1000 root entries are accepted. Invalid candidates produce warnings rather than disappearing silently; an invalid preferred checkpoint does not fall back to an older result. History performs no writes. JSON output includes local filenames, run metadata and recomputed summaries, so review it before sharing.
+
+Comparisons require two distinct evaluation IDs and comparison identity version 1, written by SkillDelta 0.4 or newer. The hashed identity covers the full loaded suite and hidden tests, provider endpoint, model identifier, seed, trial count, resolved Docker image, generation limits and demo fixtures where relevant. Only the skill is excluded. The endpoint and hidden source remain undisclosed. Disclosed metadata is checked too. Demo/live mixtures are incompatible; demo comparisons are explicitly labeled simulated. Old reports can be listed but missing inputs cannot be reconstructed reliably, so comparison refuses them. Resuming an old checkpoint with unchanged inputs records the new identity from the validated current plan.
+
+Both runs must contain all expected unique task/trial/condition outcomes and no provider/runtime errors before changes are calculated. Stored summaries are ignored. The JSON comparison reports previous/current summaries, per-task pass counts, and three changes in percentage points:
+
+- Baseline pass rate: current minus previous.
+- Skill pass rate: current minus previous.
+- Measured skill effect: current `(skill - baseline)` minus previous `(skill - baseline)`.
+
+For example, a baseline change from 40% to 60% and a skill change from 60% to 80% leave the measured skill effect unchanged at +20 percentage points. The comparison gate uses the change in that effect. It does not gate the current skill's absolute pass rate. Comparisons emit JSON to stdout with `--json`; shell redirection can save it. They never update input files or output directories.
+
+To try the workflow without a model or Docker:
+
+```sh
+skilldelta demo --out .skilldelta/demo-before
+skilldelta demo --out .skilldelta/demo-after
+skilldelta history .skilldelta
+skilldelta compare .skilldelta/demo-before/results.json .skilldelta/demo-after/results.json --json
+```
+
+These two deterministic fixture runs should show zero change and are not model evidence. Matching fingerprints do not prove the model/provider stayed unchanged behind an identifier, equal hardware performance, matched model random seeds, statistical significance, or file authenticity. Hashes are reproducible local identifiers; edited reports can be fabricated. Inspect representative failures and repeat live evaluations before drawing a conclusion. Run these commands against a stable local directory; history is not a transaction across concurrently changing folders.
+
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Command completed; ordinary test failures alone do not make a comparison command fail |
 | `1` | The optional regression gate failed |
-| `2` | Invalid input, provider failure, execution error, or a failing `doctor` check |
+| `2` | Invalid input, incompatible/inconclusive saved comparison, provider failure, execution error, or a failing `doctor` check |
 | `130` / `143` | Interrupted by SIGINT / SIGTERM; saved progress can be resumed once an evaluation has started |
 
 The JSON report retains individual outcomes so CI can implement a stricter project-specific policy. Use `skilldelta --help` for command help and `skilldelta --version` for the package version.

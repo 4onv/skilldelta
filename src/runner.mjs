@@ -62,6 +62,10 @@ export async function runEvaluation({ suite, skill, model, seed = 42, trials = 3
   const planSha256 = sha256(JSON.stringify({ version: 1, suite, skill, model: model ?? null, seed, trials, endpoint: endpoint ?? null,
     image: image ?? null, maxOutputTokens, timeoutMs, demoSolutions: demoSolutions ?? null }));
   const report = { schemaVersion: 1, id: randomUUID(), createdAt: new Date().toISOString(), mode: demoSolutions ? 'demo' : 'live', skill: { name: skill.name, sha256: skill.sha256 }, suite: { name: suite.name, sha256: suite.sha256, tests: suite.tasks.map(t => ({ id: t.id, sha256: t.testSha256 })) }, model: demoSolutions ? 'Deterministic fixtures (no model)' : model, seed, trials, runtime: demoSolutions ? process.version : image, settings: { maxOutputTokens, timeoutMs, temperature: 0, ordering: 'Alternating pair order; seed controls parity, not model randomness' } };
+  // Skill identity is intentionally excluded so a revised skill can be compared.
+  // Endpoint and held-out sources remain hashed, never copied into artifacts.
+  report.comparison = { version: 1, inputsSha256: sha256(JSON.stringify({ version: 1, suite, model: model ?? null, seed, trials,
+    endpoint: endpoint ?? null, image: demoSolutions ? process.version : image ?? null, maxOutputTokens, timeoutMs, demoSolutions: demoSolutions ?? null })) };
   const results = resumeReport ? resumeRows(resumeReport, report, steps, planSha256) : [];
   const checkpoint = async () => {
     report.results = results;
