@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 — 2026-11-11
+
+- Add a reusable GitHub Action for saved-run regressions with an inclusive percentage-point tolerance, explicit failure statuses, step outputs, and a job summary.
+- Compute changes from integer pass counts to avoid false regression failures when the measured effect is unchanged.
+- Verify the action through the GitHub runner on Ubuntu and Windows using synthetic evaluations.
+
 ## 0.4.0 — 2026-11-09
 
 - List saved results and checkpoints with read-only `history`, explicit scan bounds and invalid-file warnings.
@@ -22,7 +28,7 @@
 - Load project configuration automatically from the current directory or explicitly with `--config`. CLI flags override config values, and config paths resolve relative to the config file.
 - Include documentation and security guidance in the package, with a clean offline installation smoke test in the Windows/Ubuntu and Node.js 22/24 CI matrix.
 
-Checkpoint/resume and history/comparison arrived in later releases. A reusable GitHub Action and real agent adapters remain future work. The evaluation protocol remains single-turn code generation.
+Checkpoint/resume, history/comparison, and the reusable GitHub Action arrived in later releases. The evaluation protocol remains single-turn code generation.
 
 ## 0.1.0 — 2026-11-01
 

@@ -1,11 +1,13 @@
 import { open, mkdir, readFile, rename, unlink, lstat } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import path from 'node:path';
 
 const MAX_BYTES = 16 * 1024 * 1024;
 export async function readCheckpoint(file) {
-  const handle = await open(file, 'r');
+  const flags = constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
+  const handle = await open(file, flags);
   try {
     const info = await handle.stat();
     if (!info.isFile() || info.size > MAX_BYTES) throw new Error('Checkpoint must be a regular file smaller than 16 MiB.');

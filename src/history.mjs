@@ -67,10 +67,15 @@ export function compareEvaluations(previousInput,currentInput) {
     result.status='inconclusive';reasons.push('Both runs must be complete and free of provider/runtime errors.');return result;
   }
   result.status='comparable';
+  // Comparable complete runs have the same denominator for both conditions.
+  // Subtract integer pass counts first so equal effects compare to exactly zero.
+  const baselineChange = current.summary.baseline.passed - previous.summary.baseline.passed;
+  const skillChange = current.summary.skill.passed - previous.summary.skill.passed;
+  const conditionTotal = current.summary.skill.total;
   result.changes={
-    baselinePercentagePoints:(current.summary.baseline.passRate-previous.summary.baseline.passRate)*100,
-    skillPercentagePoints:(current.summary.skill.passRate-previous.summary.skill.passRate)*100,
-    skillEffectPercentagePoints:current.summary.deltaPercentagePoints-previous.summary.deltaPercentagePoints,
+    baselinePercentagePoints: baselineChange * 100 / conditionTotal,
+    skillPercentagePoints: skillChange * 100 / conditionTotal,
+    skillEffectPercentagePoints: (skillChange - baselineChange) * 100 / conditionTotal,
     skillChanged:previous.skill.sha256!==current.skill.sha256
   };
   result.tasks=previous.suite.tests.map(({id})=>{

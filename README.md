@@ -13,14 +13,14 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Version 0.4 adds saved-run history and comparisons between skill revisions. Completed attempts are saved as a run proceeds, and interrupted evaluations can resume. It evaluates **single-turn code generation** through a compatible chat-completions endpoint. It does not run a complete coding agent, install a skill into an agent, or measure multi-turn tool use.
+Version 0.5 adds a reusable GitHub Action for comparing saved skill evaluations in CI. The CLI evaluates **single-turn code generation** through a compatible chat-completions endpoint, saves completed attempts as a run proceeds, and can resume interrupted evaluations. [Action usage](docs/action.md)
 
 ## Try it in a minute
 
-Install [Node.js 22 or newer](https://nodejs.org/) and download `4onv-skilldelta-0.4.0.tgz` from the [v0.4.0 GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.4.0). From the download directory:
+Install Node.js 22 or newer and download `4onv-skilldelta-0.5.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.5.0)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.4.0.tgz
+npm install -g ./4onv-skilldelta-0.5.0.tgz
 skilldelta demo
 ```
 
@@ -125,7 +125,7 @@ node bin/skilldelta.mjs demo
 
 CI runs the unit tests, demo, and a packed-package installation smoke test on Windows and Ubuntu with Node.js 22 and 24. The artifact check installs into a clean temporary prefix and exercises the installed commands. A separate Ubuntu job exercises Docker verification without calling a paid model.
 
-CI also interrupts and resumes the CLI using a local mock provider and real Docker verification, without paid model calls. A reusable GitHub Action, stronger benchmarks and real agent adapters remain future work.
+CI also interrupts and resumes the CLI using a local mock provider and real Docker verification. The reusable GitHub Action checks compatible saved evaluations and can fail a workflow when the measured skill effect declines beyond your tolerance. [GitHub Action setup](docs/action.md)
 
 Useful contributions include representative task suites, endpoint compatibility fixes, and clearer failure diagnostics. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before adding a runner or publishing reports.
 

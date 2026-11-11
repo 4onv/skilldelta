@@ -25,7 +25,7 @@ try {
   assert.equal(packed?.name, metadata.name);
   assert.equal(path.basename(packed.filename), packed.filename);
   const artifact = path.join(directory, packed.filename);
-  for (const file of ['docs/cli.md','docs/packaging.md','SECURITY.md','CONTRIBUTING.md','src/onboarding.mjs','src/checkpoint.mjs','examples/tasks/chunk.checks.mjs']) assert.ok(packed.files.some(entry => entry.path === file), `Packed file missing: ${file}`);
+  for (const file of ['action.yml','src/action.mjs','docs/action.md','docs/cli.md','docs/packaging.md','SECURITY.md','CONTRIBUTING.md','src/onboarding.mjs','src/checkpoint.mjs','examples/tasks/chunk.checks.mjs']) assert.ok(packed.files.some(entry => entry.path === file), `Packed file missing: ${file}`);
   const prefix = path.join(directory, 'installed');
   run(npmCli, ['install','--prefix',prefix,'--offline','--ignore-scripts','--no-audit','--no-fund','--package-lock=false',artifact]);
   const installedRoot = path.join(prefix, 'node_modules', ...metadata.name.split('/'));

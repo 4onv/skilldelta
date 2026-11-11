@@ -1,13 +1,13 @@
 {
   "name": "@4onv/skilldelta",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Does your agent skill help? Paired coding evaluations with executable tests and shareable reports.",
   "type": "module",
   "license": "MIT",
   "engines": { "node": ">=22" },
   "bin": { "skilldelta": "bin/skilldelta.mjs" },
   "scripts": { "test": "node --test", "test:package": "node scripts/package-smoke.mjs", "demo": "node bin/skilldelta.mjs demo" },
-  "files": ["bin", "src", "examples", "assets", "docs", "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md", "CONTRIBUTING.md"],
+  "files": ["action.yml", "bin", "src", "examples", "assets", "docs", "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md", "CONTRIBUTING.md"],
   "repository": { "type": "git", "url": "https://github.com/4onv/skilldelta.git" },
   "keywords": ["agent-skills", "benchmark", "evaluation", "ab-testing", "developer-tools"]
 }

@@ -39,6 +39,79 @@ jobs:
           path: .skilldelta/demo/
           include-hidden-files: true
 
+  action:
+    name: Regression action / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Create synthetic saved evaluations
+        shell: bash
+        run: |
+          node bin/skilldelta.mjs demo --out .skilldelta/before
+          node bin/skilldelta.mjs demo --out .skilldelta/after
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            const demo = JSON.parse(readFileSync(".skilldelta/after/results.json", "utf8"));
+            const passing = demo.results.find((row) => row.condition === "skill" && row.passed);
+            passing.passed = false;
+            passing.status = "failed";
+            writeFileSync(".skilldelta/regression.json", JSON.stringify(demo));
+            demo.results.pop();
+            demo.checkpoint.complete = false;
+            writeFileSync(".skilldelta/incomplete.json", JSON.stringify(demo));'
+      - name: Accept equivalent demo runs
+        id: equivalent
+        uses: ./
+        with:
+          previous: .skilldelta/before/results.json
+          current: .skilldelta/after/results.json
+      - name: Reject a synthetic regression
+        id: regression
+        continue-on-error: true
+        uses: ./
+        with:
+          previous: .skilldelta/before/results.json
+          current: .skilldelta/regression.json
+      - name: Reject an incomplete evaluation
+        id: incomplete
+        continue-on-error: true
+        uses: ./
+        with:
+          previous: .skilldelta/before/results.json
+          current: .skilldelta/incomplete.json
+      - name: Verify runner outcomes and outputs
+        shell: bash
+        env:
+          EQUIVALENT: ${{ steps.equivalent.outputs.status }}
+          EQUIVALENT_DELTA: ${{ steps.equivalent.outputs.skill_effect_change_pp }}
+          SIMULATED: ${{ steps.equivalent.outputs.simulated }}
+          REGRESSION: ${{ steps.regression.outputs.status }}
+          REGRESSION_OUTCOME: ${{ steps.regression.outcome }}
+          INCOMPLETE: ${{ steps.incomplete.outputs.status }}
+          INCOMPLETE_OUTCOME: ${{ steps.incomplete.outcome }}
+        run: |
+          node --input-type=module -e '
+            import assert from "node:assert/strict";
+            const env = process.env;
+            assert.equal(env.EQUIVALENT, "pass");
+            assert.equal(env.EQUIVALENT_DELTA, "0");
+            assert.equal(env.SIMULATED, "true");
+            assert.equal(env.REGRESSION, "regression");
+            assert.equal(env.REGRESSION_OUTCOME, "failure");
+            assert.equal(env.INCOMPLETE, "inconclusive");
+            assert.equal(env.INCOMPLETE_OUTCOME, "failure");'
+
   docker:
     name: Docker verification
     runs-on: ubuntu-latest

@@ -1,0 +1,26 @@
+name: SkillDelta regression check
+description: Compare two saved SkillDelta evaluations and gate on change in measured skill effect.
+inputs:
+  previous:
+    description: Path to the previous results.json or checkpoint.json.
+    required: true
+  current:
+    description: Path to the current results.json or checkpoint.json.
+    required: true
+  max_regression_pp:
+    description: Maximum permitted decrease in skill effect, in percentage points.
+    required: false
+    default: '0'
+outputs:
+  status:
+    description: pass, regression, incompatible, inconclusive, or invalid.
+  skill_effect_change_pp:
+    description: Signed percentage-point change. Empty if the inputs could not be compared.
+  simulated:
+    description: Whether both supplied runs are simulated demos. Empty for invalid inputs.
+runs:
+  using: node24
+  main: src/action.mjs
+branding:
+  icon: bar-chart-2
+  color: blue
