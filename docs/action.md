@@ -7,7 +7,7 @@ Use the step after your workflow creates or downloads both evaluation files. Pat
 ```yaml
 - name: Check skill regression
   id: skilldelta
-  uses: 4onv/skilldelta@v0.5.0
+  uses: 4onv/skilldelta@v0.6.0
   with:
     previous: evaluations/previous/results.json
     current: evaluations/current/results.json

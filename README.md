@@ -13,14 +13,14 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Version 0.5 adds a reusable GitHub Action for comparing saved skill evaluations in CI. The CLI evaluates **single-turn code generation** through a compatible chat-completions endpoint, saves completed attempts as a run proceeds, and can resume interrupted evaluations. [Action usage](docs/action.md)
+Version 0.6 adds an HTTP benchmark preset with executable checks for retry delays, byte ranges, and incremental JSON decoding. The CLI evaluates **single-turn code generation** through a compatible chat-completions endpoint, can resume interrupted runs, and provides a GitHub Action for comparing saved results. [Benchmark tasks](examples/http-boundaries/README.md) · [Action usage](docs/action.md)
 
 ## Try it in a minute
 
-Install Node.js 22 or newer and download `4onv-skilldelta-0.5.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.5.0)
+Install Node.js 22 or newer and download `4onv-skilldelta-0.6.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.6.0)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.5.0.tgz
+npm install -g ./4onv-skilldelta-0.6.0.tgz
 skilldelta demo
 ```
 
@@ -50,6 +50,8 @@ cd my-evaluation
 ```
 
 This creates `skilldelta.config.json` and a `skilldelta/` directory containing a starter skill and three executable tasks. Existing files are not overwritten. Set `model` and `endpoint` in the config; both start as `null` so you choose the provider explicitly. If your provider needs authentication, set `SKILLDELTA_API_KEY` in your shell. Keep credentials out of config files and command-line arguments.
+
+Use `skilldelta init http-evaluation --preset http-boundaries` to scaffold the retry, range, and streaming tasks instead.
 
 ```sh
 skilldelta doctor

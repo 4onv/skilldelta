@@ -4,22 +4,24 @@ import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadSuite } from '../src/config.mjs';
 
 const examplesUrl = new URL('../examples/', import.meta.url);
 const suite = JSON.parse(await readFile(new URL('suite.json', examplesUrl), 'utf8'));
 const solutions = JSON.parse(await readFile(new URL('demo-solutions.json', examplesUrl), 'utf8'));
 
-async function evaluate(task, files) {
+async function evaluate(task, files, directory = examplesUrl) {
   const workspace = await mkdtemp(join(tmpdir(), 'skilldelta-fixture-'));
   try {
     for (const [name, content] of Object.entries(files)) {
       await writeFile(join(workspace, name), content);
     }
-    const verifier = await readFile(new URL(task.testFile, examplesUrl), 'utf8');
+    const verifier = await readFile(new URL(task.testFile, directory), 'utf8');
     await writeFile(join(workspace, '__skilldelta.test.mjs'), verifier);
     const childEnv = { ...process.env };
     delete childEnv.NODE_TEST_CONTEXT;
-    const result = spawnSync(process.execPath, ['--test', '__skilldelta.test.mjs'], {
+    const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', '__skilldelta.test.mjs'], {
       cwd: workspace,
       encoding: 'utf8',
       timeout: task.timeoutMs,
@@ -47,6 +49,27 @@ test('synthetic demo baseline passes exactly one task; skill passes all three', 
   }
   assert.deepEqual(counts, { baseline: 1, skill: 3 });
 });
+
+const httpDirectory = new URL('http-boundaries/', examplesUrl);
+const httpSuiteUrl = new URL('suite.json', httpDirectory);
+const httpSuite = JSON.parse(await readFile(httpSuiteUrl, 'utf8'));
+const variants = JSON.parse(await readFile(new URL('fixtures/http-boundary-variants.json', import.meta.url), 'utf8'));
+
+test('HTTP benchmark loads through the normal suite parser', async () => {
+  const loaded = await loadSuite(fileURLToPath(httpSuiteUrl));
+  assert.deepEqual(loaded.tasks.map(task => task.id), ['retry-after', 'byte-range', 'ndjson-chunks']);
+});
+
+for (const task of httpSuite.tasks) {
+  test(`HTTP fixture ${task.id} passes a reference and rejects a plausible shortcut`, async () => {
+    const implementations = variants[task.id];
+    const pass = await evaluate(task, { 'solution.mjs': implementations.reference }, httpDirectory);
+    assert.equal(pass.status, 0, pass.stdout + pass.stderr);
+    const fail = await evaluate(task, { 'solution.mjs': implementations.mutant }, httpDirectory);
+    assert.equal(fail.status, 1, fail.stdout + fail.stderr);
+    assert.match(fail.stdout, /^not ok \d+/m);
+  });
+}
 
 test('every starter fails, so the example suite detects unimplemented tasks', async () => {
   for (const task of suite.tasks) {

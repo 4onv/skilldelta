@@ -11,6 +11,8 @@ cd my-evaluation
 
 Creates `skilldelta.config.json` and a `skilldelta/` directory containing the starter suite, skill, and executable task checks. Omit the directory to use the current directory. Initialization refuses to overwrite an existing config or `skilldelta/` directory, and refuses symbolic-link directory components.
 
+Choose the default `edge-cases` preset or scaffold the retry, range, and streaming tasks with `skilldelta init http-evaluation --preset http-boundaries`. [HTTP benchmark](../examples/http-boundaries/README.md)
+
 The generated configuration is:
 
 ```json

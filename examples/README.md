@@ -1,5 +1,7 @@
 # Example suite
 
+Use `skilldelta init NAME --preset http-boundaries` to scaffold a separate benchmark for HTTP and streamed data. [HTTP data boundaries](http-boundaries/README.md)
+
 These three JavaScript tasks have explicit contracts and executable tests. A
 task passes only when **all** of its tests pass. The test files are evaluation
 inputs: the runner copies each into a fresh workspace as

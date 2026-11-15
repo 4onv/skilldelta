@@ -1,0 +1,44 @@
+{
+  "name": "HTTP data boundaries",
+  "tasks": [
+    {
+      "id": "retry-after",
+      "title": "Parse a Retry-After delay",
+      "prompt": "Implement the named export retryAfterMs(value, nowMs) in solution.mjs. Return an integer delay in milliseconds or null for unsupported or invalid input. nowMs must be a safe integer at all times or throw RangeError. Return null for non-string input. Trim leading/trailing ASCII space (U+0020) and tab only. Accept nonempty ASCII digits as seconds (leading zeros are allowed). Reject the value if the delay in milliseconds is not a safe integer. Also accept an exact IMF-fixdate HTTP date, for example Wed, 21 Oct 2015 07:28:00 GMT. Require valid calendar fields and a matching weekday, GMT, fixed casing, and exact punctuation and spacing. Reject obsolete date formats. Return max(0, dateMs - nowMs) if the delay is safe, otherwise null. Treat input as one field value, without combined headers, numbers with signs, decimals, or exponent notation.",
+      "starter": {
+        "solution.mjs": "export function retryAfterMs(value, nowMs) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": [
+        "solution.mjs"
+      ],
+      "testFile": "tasks/retry-after.checks.mjs",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "byte-range",
+      "title": "Resolve one HTTP byte range",
+      "prompt": "Implement the named export singleByteRange(header, length) in solution.mjs. length must be a nonnegative safe integer or throw RangeError before processing header. Return null for a non-string header or any malformed, unsupported, or unsatisfiable range. Trim ASCII spaces and tabs at the outer edges only. Accept exactly one case-insensitive bytes=start-end, bytes=start-, or bytes=-suffixLength range, using ASCII digits and no internal whitespace. Leading zeros are allowed. Decimal integers larger than Number.MAX_SAFE_INTEGER are valid and must compare without rounding. Return {start, end} with zero-based inclusive numeric bounds. Clamp the given end to length - 1. A missing end means length - 1. A suffix selects the last suffixLength bytes, or the whole resource when it exceeds the length. Reject a zero suffix, a zero-length resource, a start at or beyond length, or an explicit end below start. Reject a comma-separated list and other units.",
+      "starter": {
+        "solution.mjs": "export function singleByteRange(header, length) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": [
+        "solution.mjs"
+      ],
+      "testFile": "tasks/byte-range.checks.mjs",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "ndjson-chunks",
+      "title": "Read NDJSON split across byte chunks",
+      "prompt": "Implement the named export async function* readNdjson(chunks, maxLineBytes = 1024) in solution.mjs. chunks is an iterable or async iterable of Uint8Array chunks. Reject any non-Uint8Array chunk with TypeError. maxLineBytes must be a positive safe integer or throw RangeError when iterated. Yield one JSON value per nonblank line in order, allowing LF and CRLF and allowing a final line without a terminator. A blank line means empty or only ASCII spaces and tabs. Remove one CR only before an LF. Apply maxLineBytes to every physical line, including blank lines and the final unterminated line, excluding the LF and the optional preceding CR. Throw RangeError on a long line. Decode UTF-8 strictly, including when a code point spans chunks. Throw SyntaxError on invalid UTF-8, invalid JSON, or a UTF-8 BOM at the start of any line. Stop on the first error and preserve values already yielded. Process incrementally: yield complete lines in the current chunk before requesting the next chunk.",
+      "starter": {
+        "solution.mjs": "export async function* readNdjson(chunks, maxLineBytes = 1024) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": [
+        "solution.mjs"
+      ],
+      "testFile": "tasks/ndjson-chunks.checks.mjs",
+      "timeoutMs": 10000
+    }
+  ]
+}

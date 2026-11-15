@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Add an installable `http-boundaries` benchmark preset covering Retry-After delays, byte-range handling, and incremental NDJSON parsing.
+- Verify each benchmark with a reference and a deliberately flawed implementation. Keep those implementations out of the release tarball.
+- Exercise scaffolding and dry-run validation for the new preset from a clean offline install.
+
 ## 0.5.0 — 2026-11-11
 
 - Add a reusable GitHub Action for saved-run regressions with an inclusive percentage-point tolerance, explicit failure statuses, step outputs, and a job summary.

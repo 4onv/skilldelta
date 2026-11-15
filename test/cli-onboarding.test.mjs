@@ -48,6 +48,9 @@ test('config validation fails safely before any live execution', async () => {
     const absent=path.join(directory,'absent'); await mkdir(absent);
     assert.equal(cli(['run','--config','missing.json','--dry-run'],absent).status,2);
     assert.equal(cli(['demo','--config','missing.json'],absent).status,2);
+    const invalidPreset=path.join(directory,'invalid-preset');
+    assert.match(cli(['init',invalidPreset,'--preset','../examples'],directory).stderr,/Choose an init preset/);
+    await assert.rejects(readFile(path.join(invalidPreset,'skilldelta.config.json')), { code: 'ENOENT' });
   } finally { await rm(directory,{recursive:true,force:true,maxRetries:3}); }
 });
 test('generated paths reject Windows aliases and reserved verifier case variants', () => {

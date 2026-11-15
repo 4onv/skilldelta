@@ -3,6 +3,7 @@ import { parseArgs } from 'node:util';
 import { readFile, mkdir, writeFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import packageInfo from '../package.json' with { type: 'json' };
 import { loadSuite, loadSkill, integer, validateEndpoint } from '../src/config.mjs';
 import { prepareDocker } from '../src/execute.mjs';
 import { runEvaluation, summarize } from '../src/runner.mjs';
@@ -12,7 +13,7 @@ import { atomicJson, openRunDirectory, readCheckpoint } from '../src/checkpoint.
 import { compareEvaluations, listHistory } from '../src/history.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const onboardingHelp = `Project setup:\n  skilldelta init [DIRECTORY]       Create configuration and example tasks without overwriting files\n  skilldelta doctor [--json]        Check configuration, Node, Docker, and key presence (no API calls)\n  skilldelta run [--config FILE]    Load skilldelta.config.json automatically; CLI flags override it\n\nPaths in configuration are relative to the configuration file. Keys stay in SKILLDELTA_API_KEY.\n\n`;
+const onboardingHelp = `Project setup:\n  skilldelta init [DIRECTORY] [--preset edge-cases|http-boundaries]\n  skilldelta doctor [--json]        Check configuration, Node, Docker, and key presence (no API calls)\n  skilldelta run [--config FILE]    Load skilldelta.config.json automatically; CLI flags override it\n\nPaths in configuration are relative to the configuration file. Keys stay in SKILLDELTA_API_KEY.\n\n`;
 
 async function selectedConfig(values) {
   if (values.config !== undefined) return path.resolve(values.config);
@@ -33,13 +34,13 @@ async function save(report, out) {
   console.log(`\n${report.summary.verdict}\nBaseline ${report.summary.baseline.passed}/${report.summary.baseline.total} → Skill ${report.summary.skill.passed}/${report.summary.skill.total}\nReport: ${path.resolve(out, 'report.html')}`);
 }
 async function main() {
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: Object.fromEntries(['out','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image','config'].map(k => [k, { type: 'string' }]).concat(['help','version','dry-run','fail-on-regression','json','resume'].map(k => [k, { type: 'boolean' }]))) });
-  if (values.version) { console.log('0.5.0'); return; }
+  const { values, positionals } = parseArgs({ allowPositionals: true, options: Object.fromEntries(['out','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image','config','preset'].map(k => [k, { type: 'string' }]).concat(['help','version','dry-run','fail-on-regression','json','resume'].map(k => [k, { type: 'boolean' }]))) });
+  if (values.version) { console.log(packageInfo.version); return; }
   if (values.help || !positionals.length) { console.log(onboardingHelp + help + '\nSaved evaluations (read-only, no model calls):\n  skilldelta history [DIRECTORY] [--json]\n  skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]\nComparison requires matching evaluation inputs; only the skill may change.\n'); return; }
   const [command, input] = positionals;
   if (!['demo','run','report','init','doctor','history','compare'].includes(command)) throw new Error(`Unknown command: ${command}`);
   if (positionals.length > (command==='compare'?3:['report','init','history'].includes(command)?2:1)) throw new Error('Unexpected positional argument.');
-  const accepted = command==='compare'?['json','fail-on-regression']:command==='history'?['json']:command === 'init' ? [] : command === 'doctor' ? ['config','json','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image'] : ['demo','report'].includes(command) ? ['out'] : ['out','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image','config','dry-run','fail-on-regression','resume'];
+  const accepted = command==='compare'?['json','fail-on-regression']:command==='history'?['json']:command === 'init' ? ['preset'] : command === 'doctor' ? ['config','json','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image'] : ['demo','report'].includes(command) ? ['out'] : ['out','suite','skill','model','endpoint','trials','seed','max-output-tokens','timeout-ms','image','config','dry-run','fail-on-regression','resume'];
   for (const key of Object.keys(values)) if (!accepted.includes(key)) throw new Error(`--${key} is not valid for ${command}.`);
   if(command==='history'){
     const history=await listHistory(input??'.skilldelta');
@@ -67,7 +68,7 @@ async function main() {
     return;
   }
   if (command === 'init') {
-    const initialized = await initialize(input ?? '.');
+    const initialized = await initialize(input ?? '.', { preset: values.preset });
     console.log(`Created ${initialized.configPath}\nSet model and endpoint in that file, then run skilldelta doctor and skilldelta run --dry-run from the project directory.`); return;
   }
   if (command === 'doctor') {

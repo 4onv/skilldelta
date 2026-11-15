@@ -7,7 +7,17 @@ import { integer, loadSkill, loadSuite, readSmall, validateEndpoint } from './co
 import { command } from './execute.mjs';
 
 const examples = fileURLToPath(new URL('../examples/', import.meta.url));
-const templateFiles = ['suite.json', 'edge-cases/SKILL.md', 'tasks/slugify.checks.mjs', 'tasks/chunk.checks.mjs', 'tasks/uniqueBy.checks.mjs'];
+const presets = {
+  'edge-cases': {
+    suite: 'suite.json', skill: 'edge-cases/SKILL.md',
+    tasks: ['tasks/slugify.checks.mjs', 'tasks/chunk.checks.mjs', 'tasks/uniqueBy.checks.mjs'],
+  },
+  'http-boundaries': {
+    suite: 'http-boundaries/suite.json', skill: 'http-boundaries/SKILL.md',
+    tasks: ['http-boundaries/tasks/retry-after.checks.mjs', 'http-boundaries/tasks/byte-range.checks.mjs',
+      'http-boundaries/tasks/ndjson-chunks.checks.mjs'],
+  },
+};
 const allowed = new Set(['schemaVersion', 'suite', 'skill', 'model', 'endpoint', 'trials', 'seed', 'maxOutputTokens', 'timeoutMs', 'image', 'out']);
 const numeric = { trials: [1, 100], seed: [0, 2147483647], maxOutputTokens: [64, 32768], timeoutMs: [1000, 600000] };
 const imagePattern = /^[a-zA-Z0-9][a-zA-Z0-9_./:@-]+$/;
@@ -68,7 +78,10 @@ async function safeDirectory(directory) {
 }
 
 /** Scaffold an editable project without changing existing files or reading secrets. */
-export async function initialize(target = '.') {
+export async function initialize(target = '.', { preset = 'edge-cases' } = {}) {
+  if (!Object.hasOwn(presets, preset)) throw new Error('Choose an init preset: edge-cases or http-boundaries.');
+  const { suite, skill, tasks } = presets[preset];
+  const templateFiles = [suite, skill, ...tasks];
   const directory = await safeDirectory(target);
   const configPath = path.join(directory, 'skilldelta.config.json');
   const workspace = path.join(directory, 'skilldelta');
@@ -76,7 +89,7 @@ export async function initialize(target = '.') {
 
   // Read the fixed bundled assets before making any destination changes.
   const contents = await Promise.all(templateFiles.map(async file => [file, await readFile(path.join(examples, file), 'utf8')]));
-  const config = { schemaVersion: 1, suite: 'skilldelta/suite.json', skill: 'skilldelta/edge-cases/SKILL.md', model: null, endpoint: null, trials: 3, seed: 42, maxOutputTokens: 4096, timeoutMs: 120000, image: 'node:22-alpine', out: '.skilldelta/run' };
+  const config = { schemaVersion: 1, suite: `skilldelta/${suite}`, skill: `skilldelta/${skill}`, model: null, endpoint: null, trials: 3, seed: 42, maxOutputTokens: 4096, timeoutMs: 120000, image: 'node:22-alpine', out: '.skilldelta/run' };
   await mkdir(directory, { recursive: true });
   await safeDirectory(directory);
   const stage = path.join(directory, `.skilldelta-init-${randomUUID()}`);

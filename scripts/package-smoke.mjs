@@ -35,6 +35,12 @@ try {
   const project = path.join(directory, 'project');
   run(bin, ['init', project]);
   assert.match(run(bin, ['run','--model','package-test','--endpoint','https://example.com/v1/chat/completions','--dry-run'], project), /Validation passed/);
+  const http = path.join(directory, 'http');
+  run(bin, ['init', http, '--preset', 'http-boundaries']);
+  const httpConfig = JSON.parse(await readFile(path.join(http, 'skilldelta.config.json'), 'utf8'));
+  assert.equal(httpConfig.suite, 'skilldelta/http-boundaries/suite.json');
+  assert.match(run(bin, ['run','--model','package-test','--endpoint','https://example.com/v1/chat/completions','--dry-run'], http), /18 provider requests[\s\S]*Validation passed/);
+  assert.ok(!packed.files.some(entry => entry.path.startsWith('test/')), 'Reference implementations must stay out of the package.');
   const readiness = JSON.parse(run(bin, ['doctor','--json'], project, [0,2]));
   for (const name of ['node','config','suite','skill']) assert.equal(readiness.checks.find(check => check.name === name)?.status, 'pass', `Installed doctor failed: ${name}`);
   run(bin, ['demo','--out',path.join(directory,'demo')]);
