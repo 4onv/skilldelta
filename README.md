@@ -13,14 +13,14 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Version 0.6 adds an HTTP benchmark preset with executable checks for retry delays, byte ranges, and incremental JSON decoding. The CLI evaluates **single-turn code generation** through a compatible chat-completions endpoint, can resume interrupted runs, and provides a GitHub Action for comparing saved results. [Benchmark tasks](examples/http-boundaries/README.md) · [Action usage](docs/action.md)
+Run paired evaluations through a chat-completions endpoint or connect your own coding agent over the versioned HTTP adapter. Both paths use the same held-out tests, resumable checkpoints, and saved-run regression checks. [Adapter protocol and runnable mock](docs/adapters.md) · [Benchmark tasks](examples/http-boundaries/README.md) · [Action usage](docs/action.md)
 
 ## Try it in a minute
 
-Install Node.js 22 or newer and download `4onv-skilldelta-0.6.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.6.0)
+Install Node.js 22 or newer and download `4onv-skilldelta-0.7.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.7.0)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.6.0.tgz
+npm install -g ./4onv-skilldelta-0.7.0.tgz
 skilldelta demo
 ```
 
@@ -40,7 +40,7 @@ You can also download and open the [sample report](examples/sample-report.html).
 
 ## Evaluate your own skill
 
-You need a running Docker installation with Linux containers and a provider exposing a compatible `/v1/chat/completions` endpoint. Live runs may incur provider charges.
+You need Docker with Linux containers and a compatible endpoint. The default adapter uses `/v1/chat/completions`. Set `"adapter": "skilldelta-http-v1"` for a worker that implements the SkillDelta protocol. Live runs may incur provider charges. [Connect an agent](docs/adapters.md)
 
 Create an editable evaluation project:
 
@@ -76,7 +76,7 @@ Each completed attempt is saved atomically to `checkpoint.json`. Ctrl+C cancels 
 skilldelta run --resume
 ```
 
-Resume validates the suite, skill, tests, model, endpoint, generation settings and resolved Docker image. Completed failures and provider errors are retained too. An interrupted in-flight attempt is retried and may have already incurred a provider charge. Use a new `--out` directory for a fresh evaluation. [Recovery details](docs/cli.md#interrupt-and-resume)
+Resume validates the suite, skill, tests, adapter, model, endpoint, generation settings and resolved Docker image. Completed failures and provider errors are retained too. An interrupted in-flight attempt is retried and may have already incurred a provider charge. Use a new `--out` directory for a fresh evaluation. [Recovery details](docs/cli.md#interrupt-and-resume)
 
 Three tasks × three trials × two conditions means **18 model calls**. Both conditions use the same task prompt, starter files, and test suite. Only the skill condition receives the skill text. Test source is withheld from the model request.
 
@@ -113,7 +113,7 @@ skilldelta compare .skilldelta/before/results.json .skilldelta/after/results.jso
 skilldelta compare .skilldelta/before/results.json .skilldelta/after/results.json --json --fail-on-regression
 ```
 
-These commands read saved files without executing tests or contacting a model. History inspects the root and its immediate run folders, preferring the latest atomic checkpoint to a possibly older results file. Comparisons require fingerprints recorded by version 0.4 or newer. The skill can change; the suite, tests, endpoint, model, seed, trials, generation settings and resolved runtime must agree. Earlier results still appear in history but cannot establish input compatibility.
+These commands read saved files without executing tests or contacting a model. History inspects the root and its immediate run folders, preferring the latest atomic checkpoint to a possibly older results file. Comparisons require fingerprints recorded by version 0.4 or newer. The skill can change. The suite, tests, adapter, endpoint, model, seed, trials, generation settings and resolved runtime must agree. Earlier results still appear in history but cannot establish input compatibility.
 
 The comparison separates baseline pass-rate change, skill pass-rate change and the change in the measured skill effect. `compare --fail-on-regression` exits 1 only when that last quantity decreases. Partial runs and provider/runtime errors stay inconclusive; incompatible inputs exit 2. Model randomness and provider drift remain possible even with matching fingerprints. Results are editable local observations, not signatures or statistical evidence. [Limits and examples](docs/cli.md#history-and-compare)
 

@@ -4,10 +4,10 @@ SkillDelta uses Node.js built-in modules and requires Node.js 22 or newer. The p
 
 ## Install a GitHub release
 
-Download `4onv-skilldelta-0.6.0.tgz`, then run this from the download directory. [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.6.0)
+Download `4onv-skilldelta-0.7.0.tgz`, then run this from the download directory. [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.7.0)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.6.0.tgz
+npm install -g ./4onv-skilldelta-0.7.0.tgz
 skilldelta --version
 skilldelta demo
 ```
@@ -15,7 +15,7 @@ skilldelta demo
 For an explicitly offline installation of the downloaded artifact:
 
 ```sh
-npm install -g ./4onv-skilldelta-0.6.0.tgz --offline --ignore-scripts --no-audit --no-fund
+npm install -g ./4onv-skilldelta-0.7.0.tgz --offline --ignore-scripts --no-audit --no-fund
 ```
 
 This package has **not been published to npm or another package registry**. The installation commands use a local GitHub release tarball, not a registry package. Do not substitute a similarly named package from a registry.
@@ -47,8 +47,8 @@ npm pack
 
 `test:package` packs the source, installs the resulting artifact offline into a clean temporary prefix, and exercises the installed executable, demo, project initialization, readiness diagnostics, and dry-run validation. It verifies packaged files rather than relying on a working source checkout. These checks make no provider requests and do not publish a package. CI runs this check on Windows and Ubuntu with Node.js 22 and 24.
 
-`npm pack` creates `4onv-skilldelta-0.6.0.tgz` for this version. Upload that tested artifact to the corresponding GitHub release. The repository also includes a reusable action for saved-run comparisons. [Action usage](action.md)
+`npm pack` creates `4onv-skilldelta-0.7.0.tgz` for this version. Upload that tested artifact to the corresponding GitHub release. The repository also includes a reusable action for saved-run comparisons. [Action usage](action.md)
 
 ## Current scope
 
-Version 0.6 provides an installable tool for single-turn paired code-generation evaluations, setup, readiness checks, executable verification, resumable checkpoints, saved-run comparison, portable reports, and a GitHub Action for regression checks. Saved demo data is simulated.
+Version 0.7 provides an installable CLI for paired coding evaluations and a versioned HTTP worker interface. It includes executable verification, resumable checkpoints, saved-run regression checks, and portable reports. Saved demo data is simulated. [Adapter protocol](adapters.md)

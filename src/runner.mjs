@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { generate } from './provider.mjs';
+import { defaultAdapter, generate, invalidBridgeResponse, validateAdapter } from './provider.mjs';
 import { checkFiles } from './execute.mjs';
 import { sha256 } from './config.mjs';
 
@@ -56,16 +56,19 @@ function resumeRows(saved, report, steps, planSha256) {
   return rows;
 }
 
-export async function runEvaluation({ suite, skill, model, seed = 42, trials = 3, endpoint, key, image, maxOutputTokens = 4096, timeoutMs = 120000, demoSolutions, onProgress = () => {}, onCheckpoint = async () => {}, resumeReport, signal, generateFn = generate, checkFn = checkFiles }) {
+export async function runEvaluation({ suite, skill, model, seed = 42, trials = 3, endpoint, adapter = defaultAdapter, key, image, maxOutputTokens = 4096, timeoutMs = 120000, demoSolutions, onProgress = () => {}, onCheckpoint = async () => {}, resumeReport, signal, generateFn = generate, checkFn = checkFiles }) {
+  validateAdapter(adapter);
+  // Old chat-completions checkpoints and comparisons retain their original fingerprints.
+  const adapterIdentity = adapter === defaultAdapter ? {} : { adapter };
   const steps = schedule(suite, seed, trials);
   // Bind the complete evaluation inputs, including hidden test contents, without persisting them.
   const planSha256 = sha256(JSON.stringify({ version: 1, suite, skill, model: model ?? null, seed, trials, endpoint: endpoint ?? null,
-    image: image ?? null, maxOutputTokens, timeoutMs, demoSolutions: demoSolutions ?? null }));
-  const report = { schemaVersion: 1, id: randomUUID(), createdAt: new Date().toISOString(), mode: demoSolutions ? 'demo' : 'live', skill: { name: skill.name, sha256: skill.sha256 }, suite: { name: suite.name, sha256: suite.sha256, tests: suite.tasks.map(t => ({ id: t.id, sha256: t.testSha256 })) }, model: demoSolutions ? 'Deterministic fixtures (no model)' : model, seed, trials, runtime: demoSolutions ? process.version : image, settings: { maxOutputTokens, timeoutMs, temperature: 0, ordering: 'Alternating pair order; seed controls parity, not model randomness' } };
+    image: image ?? null, maxOutputTokens, timeoutMs, demoSolutions: demoSolutions ?? null, ...adapterIdentity }));
+  const report = { schemaVersion: 1, id: randomUUID(), createdAt: new Date().toISOString(), mode: demoSolutions ? 'demo' : 'live', skill: { name: skill.name, sha256: skill.sha256 }, suite: { name: suite.name, sha256: suite.sha256, tests: suite.tasks.map(t => ({ id: t.id, sha256: t.testSha256 })) }, model: demoSolutions ? 'Deterministic fixtures (no model)' : model, seed, trials, runtime: demoSolutions ? process.version : image, settings: { maxOutputTokens, timeoutMs, temperature: 0, ordering: 'Alternating pair order; seed controls parity, not model randomness', ...adapterIdentity } };
   // Skill identity is intentionally excluded so a revised skill can be compared.
   // Endpoint and held-out sources remain hashed, never copied into artifacts.
   report.comparison = { version: 1, inputsSha256: sha256(JSON.stringify({ version: 1, suite, model: model ?? null, seed, trials,
-    endpoint: endpoint ?? null, image: demoSolutions ? process.version : image ?? null, maxOutputTokens, timeoutMs, demoSolutions: demoSolutions ?? null })) };
+    endpoint: endpoint ?? null, image: demoSolutions ? process.version : image ?? null, maxOutputTokens, timeoutMs, demoSolutions: demoSolutions ?? null, ...adapterIdentity })) };
   const results = resumeReport ? resumeRows(resumeReport, report, steps, planSha256) : [];
   const checkpoint = async () => {
     report.results = results;
@@ -81,7 +84,7 @@ export async function runEvaluation({ suite, skill, model, seed = 42, trials = 3
     const started = performance.now();
     let row = { taskId: task.id, taskTitle: task.title, trial, condition, passed: false, status: 'error', inputTokens: null, outputTokens: null };
     try {
-      const generated = demoSolutions ? { files: demoSolutions[task.id][condition], inputTokens: null, outputTokens: null } : await generateFn({ endpoint, key, model, maxOutputTokens, timeoutMs, task, skillText: condition === 'skill' ? skill.text : '', signal });
+      const generated = demoSolutions ? { files: demoSolutions[task.id][condition], inputTokens: null, outputTokens: null } : await generateFn({ endpoint, ...adapterIdentity, key, model, maxOutputTokens, timeoutMs, task, skillText: condition === 'skill' ? skill.text : '', signal });
       signal?.throwIfAborted();
       row.inputTokens = generated.inputTokens; row.outputTokens = generated.outputTokens;
       Object.assign(row, await checkFn({ files: generated.files, testSource: task.testSource, timeoutMs: task.timeoutMs, image, demo: Boolean(demoSolutions), signal }));
@@ -92,7 +95,7 @@ export async function runEvaluation({ suite, skill, model, seed = 42, trials = 3
       const message = error?.name === 'TimeoutError' ? 'Provider request timed out.' : String(error?.message ?? 'Evaluation failed.');
       if (message.startsWith('Model ')) row.status = 'failed';
       const allowed = /^(Model |Provider returned HTTP |Provider returned invalid JSON\.|Provider response exceeded |Test |Invalid generated file\.)/;
-      row.error = allowed.test(message) ? message : 'Evaluation failed. Check endpoint, credentials, and runtime configuration.';
+      row.error = allowed.test(message) || message === invalidBridgeResponse ? message : 'Evaluation failed. Check endpoint, credentials, and runtime configuration.';
     }
     row.durationMs = Math.round(performance.now() - started);
     results.push(row);

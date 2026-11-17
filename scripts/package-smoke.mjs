@@ -35,6 +35,8 @@ try {
   const project = path.join(directory, 'project');
   run(bin, ['init', project]);
   assert.match(run(bin, ['run','--model','package-test','--endpoint','https://example.com/v1/chat/completions','--dry-run'], project), /Validation passed/);
+  assert.match(run(bin, ['run','--model','package-test','--adapter','skilldelta-http-v1','--endpoint','http://127.0.0.1:8787/evaluate','--dry-run'], project), /Adapter: skilldelta-http-v1[\s\S]*Validation passed/);
+  assert.ok((await stat(path.join(installedRoot, 'examples/mock-adapter.mjs'))).isFile());
   const http = path.join(directory, 'http');
   run(bin, ['init', http, '--preset', 'http-boundaries']);
   const httpConfig = JSON.parse(await readFile(path.join(http, 'skilldelta.config.json'), 'utf8'));

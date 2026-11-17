@@ -18,6 +18,8 @@ Tests being held out from a prompt does not prevent generated code from inspecti
 
 The configured provider receives the task prompt, starter files, and, for the skill condition, the skill text. Choose an endpoint appropriate for that data. Referenced skill files are not automatically read.
 
+A custom adapter operates outside SkillDelta's verification container. Run it with credentials and filesystem access appropriate for your agent. The adapter can see any bearer key you send and is responsible for the agent's own subprocesses, isolation, and cancellation. [Adapter protocol](docs/adapters.md)
+
 Reports include task titles and run metadata. Review them before sharing. Keep credentials in `SKILLDELTA_API_KEY` or your CI secret store; do not paste them into a suite, skill, model identifier, endpoint URL, issue, or report.
 
 Live checkpoints contain the same outcome metadata and a fingerprint of evaluation inputs. They omit generated source, raw responses, keys, skill text and test source. Checkpoints are editable local progress records; resume validation establishes input compatibility and structural consistency, not independent proof that tests ran. Protect the output directory from untrusted writers. A cancelled provider request may still be processed or billed; interrupted attempts can be retried on resume.

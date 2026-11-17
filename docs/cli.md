@@ -22,6 +22,7 @@ The generated configuration is:
   "skill": "skilldelta/edge-cases/SKILL.md",
   "model": null,
   "endpoint": null,
+  "adapter": "chat-completions",
   "trials": 3,
   "seed": 42,
   "maxOutputTokens": 4096,
@@ -96,6 +97,7 @@ Live runs require Docker with Linux containers. The selected Docker image must c
 | `--suite PATH` | JSON task-suite file |
 | `--skill PATH` | Skill Markdown file to include in the skill condition |
 | `--model NAME` | Model identifier accepted by the provider |
+| `--adapter NAME` | `chat-completions` (default) or `skilldelta-http-v1` for a custom agent worker |
 | `--endpoint URL` | Full chat-completions endpoint; HTTPS is required except for loopback HTTP |
 | `--trials N` | Number of repetitions of each task in each condition; default `3`, range `1–100` |
 | `--out PATH` | Output directory; live runs default to `.skilldelta/run` |
@@ -111,7 +113,7 @@ The API key comes from `SKILLDELTA_API_KEY`. The key is used for the provider re
 
 The planned request count is `tasks × trials × 2`. The token limit caps requested output per call; it is not a dollar budget or a cap on billed input tokens.
 
-The provider must accept chat-completions requests with `messages`, `temperature: 0`, and `max_tokens`, and return text in `choices[0].message.content` containing a JSON object of this shape:
+The default adapter sends `messages`, `temperature: 0`, and `max_tokens` to a chat-completions endpoint. It expects `choices[0].message.content` to contain a JSON object with the following fields.
 
 ```json
 {
@@ -121,7 +123,7 @@ The provider must accept chat-completions requests with `messages`, `temperature
 }
 ```
 
-The answer must include every editable file and no other files or top-level properties. File paths must match the task's declared editable files. A syntactically valid answer can still fail its tests. Malformed model answers count as failed attempts; provider and runner errors make the aggregate verdict inconclusive. Endpoints that require a different token-limit parameter, reject temperature zero, or use another response format need an adapter change; compatibility is not universal.
+The answer must include every editable file and no other files or top-level properties. File paths must match the task's declared editable files. A syntactically valid answer can still fail its tests. Malformed model answers count as failed attempts. Provider and runner errors make the aggregate verdict inconclusive. To control how a coding agent receives each task, use `--adapter skilldelta-http-v1` with a compatible worker. [Protocol contract](adapters.md)
 
 The seed changes whether a pair starts with the baseline or skill condition; the order alternates across tasks and trials. It is not sent as a model random seed and is not a promise of deterministic output. Model versions, provider behavior, and machine load can affect repeated runs.
 
@@ -135,7 +137,7 @@ Ctrl+C (`SIGINT`) or `SIGTERM` cancels the active provider request or test proce
 skilldelta run --resume --out .skilldelta/run
 ```
 
-Resume checks a fingerprint of the complete suite, skill, test contents, model, endpoint, seed, trial count, generation limits and resolved Docker image. A changed input is rejected before provider calls. The API key may rotate without invalidating progress. If an image tag now resolves differently, select the original image ID recorded in the saved `runtime` field or start a fresh run.
+Resume checks a fingerprint of the complete suite, skill, test contents, adapter, model, endpoint, seed, trial count, generation limits and resolved Docker image. A changed input is rejected before provider calls. The API key may rotate without invalidating progress. If an image tag now resolves differently, select the original image ID recorded in the saved `runtime` field or start a fresh run.
 
 Completed successes, test failures and provider errors are all skipped on resume. There is no automatic retry of recorded errors. A fully completed checkpoint makes no additional model calls. Start a fresh run in a new output directory to measure changed settings or retry all outcomes. `--resume --dry-run` validates configuration and prints the full planned count; it does not check checkpoint compatibility because image resolution requires Docker.
 
@@ -162,7 +164,7 @@ skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]
 
 The history directory defaults to `.skilldelta`. The command reads that directory and its immediate child directories, looking for `checkpoint.json` first, then `results.json`. It does not recurse into further descendants or follow symlinked files/folders. Up to 100 child folders and 1000 root entries are accepted. Invalid candidates produce warnings rather than disappearing silently; an invalid preferred checkpoint does not fall back to an older result. History performs no writes. JSON output includes local filenames, run metadata and recomputed summaries, so review it before sharing.
 
-Comparisons require two distinct evaluation IDs and comparison identity version 1, written by SkillDelta 0.4 or newer. The hashed identity covers the full loaded suite and hidden tests, provider endpoint, model identifier, seed, trial count, resolved Docker image, generation limits and demo fixtures where relevant. Only the skill is excluded. The endpoint and hidden source remain undisclosed. Disclosed metadata is checked too. Demo/live mixtures are incompatible; demo comparisons are explicitly labeled simulated. Old reports can be listed but missing inputs cannot be reconstructed reliably, so comparison refuses them. Resuming an old checkpoint with unchanged inputs records the new identity from the validated current plan.
+Comparisons require two distinct evaluation IDs and comparison identity version 1, written by SkillDelta 0.4 or newer. The hashed identity covers the full loaded suite and hidden tests, adapter, provider endpoint, model identifier, seed, trial count, resolved Docker image, generation limits and demo fixtures where relevant. Only the skill is excluded. The endpoint and hidden source remain undisclosed. Disclosed metadata is checked too. Demo/live mixtures are incompatible, and demo comparisons are explicitly labeled simulated. Old reports with missing input fingerprints remain available in history. Resuming an old checkpoint with unchanged inputs records the comparison identity from the validated current plan.
 
 Both runs must contain all expected unique task/trial/condition outcomes and no provider/runtime errors before changes are calculated. Stored summaries are ignored. The JSON comparison reports previous/current summaries, per-task pass counts, and three changes in percentage points:
 

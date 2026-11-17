@@ -36,7 +36,8 @@ test('init creates a portable editable project with valid bundled fixtures and n
   const raw = JSON.parse(await readFile(initialized.configPath, 'utf8'));
   assert.equal(raw.schemaVersion, 1); assert.equal(raw.model, null); assert.equal(raw.endpoint, null);
   assert.equal(raw.suite, 'skilldelta/suite.json'); assert.equal(raw.out, '.skilldelta/run');
-  assert.deepEqual(Object.keys(raw).sort(), ['schemaVersion','suite','skill','model','endpoint','trials','seed','maxOutputTokens','timeoutMs','image','out'].sort());
+  assert.deepEqual(Object.keys(raw).sort(), ['schemaVersion','suite','skill','model','endpoint','adapter','trials','seed','maxOutputTokens','timeoutMs','image','out'].sort());
+  assert.equal(raw.adapter, 'chat-completions');
   const config = await loadProjectConfig(initialized.configPath);
   assert.equal(config.suite, path.join(project, 'skilldelta', 'suite.json'));
   assert.equal(config.out, path.join(project, '.skilldelta', 'run'));

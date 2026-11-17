@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { integer, loadSkill, loadSuite, readSmall, validateEndpoint } from './config.mjs';
 import { command } from './execute.mjs';
+import { adapterChoices, defaultAdapter, validateAdapter } from './provider.mjs';
 
 const examples = fileURLToPath(new URL('../examples/', import.meta.url));
 const presets = {
@@ -18,7 +19,7 @@ const presets = {
       'http-boundaries/tasks/ndjson-chunks.checks.mjs'],
   },
 };
-const allowed = new Set(['schemaVersion', 'suite', 'skill', 'model', 'endpoint', 'trials', 'seed', 'maxOutputTokens', 'timeoutMs', 'image', 'out']);
+const allowed = new Set(['schemaVersion', 'suite', 'skill', 'model', 'endpoint', 'adapter', 'trials', 'seed', 'maxOutputTokens', 'timeoutMs', 'image', 'out']);
 const numeric = { trials: [1, 100], seed: [0, 2147483647], maxOutputTokens: [64, 32768], timeoutMs: [1000, 600000] };
 const imagePattern = /^[a-zA-Z0-9][a-zA-Z0-9_./:@-]+$/;
 
@@ -32,6 +33,7 @@ function validateConfig(config) {
   }
   if (config.image && (config.image.length > 512 || !imagePattern.test(config.image))) throw new Error('Invalid Docker image reference in project config.');
   if (config.endpoint !== undefined && config.endpoint !== null) validateEndpoint(config.endpoint);
+  validateAdapter(config.adapter);
   for (const [key, [min, max]] of Object.entries(numeric)) {
     if (!(key in config)) continue;
     if (typeof config[key] !== 'number') throw new Error(`Project config ${key} must be a number.`);
@@ -89,7 +91,7 @@ export async function initialize(target = '.', { preset = 'edge-cases' } = {}) {
 
   // Read the fixed bundled assets before making any destination changes.
   const contents = await Promise.all(templateFiles.map(async file => [file, await readFile(path.join(examples, file), 'utf8')]));
-  const config = { schemaVersion: 1, suite: `skilldelta/${suite}`, skill: `skilldelta/${skill}`, model: null, endpoint: null, trials: 3, seed: 42, maxOutputTokens: 4096, timeoutMs: 120000, image: 'node:22-alpine', out: '.skilldelta/run' };
+  const config = { schemaVersion: 1, suite: `skilldelta/${suite}`, skill: `skilldelta/${skill}`, model: null, endpoint: null, adapter: defaultAdapter, trials: 3, seed: 42, maxOutputTokens: 4096, timeoutMs: 120000, image: 'node:22-alpine', out: '.skilldelta/run' };
   await mkdir(directory, { recursive: true });
   await safeDirectory(directory);
   const stage = path.join(directory, `.skilldelta-init-${randomUUID()}`);
@@ -139,6 +141,8 @@ export async function diagnose({ configPath, cwd = process.cwd(), options = {}, 
     } catch { add(key, 'fail', key === 'suite' ? 'Suite validation failed. Check its JSON, file paths, and declared test files.' : 'Skill validation failed. Check the file path, size, and contents.'); }
   }
   add('model', typeof settings.model === 'string' && settings.model.trim() ? 'pass' : 'fail', typeof settings.model === 'string' && settings.model.trim() ? 'A model name is configured; provider support is not checked.' : 'Set model in the config or pass --model.');
+  try { add('adapter', 'pass', `Using ${validateAdapter(settings.adapter)}. Protocol compatibility is not checked.`); }
+  catch { add('adapter', 'fail', `Choose ${adapterChoices}.`); }
   try { validateEndpoint(settings.endpoint); add('endpoint', 'pass', 'Endpoint URL is valid. Connectivity and provider compatibility are not checked.'); }
   catch { add('endpoint', 'fail', 'Set a valid HTTPS endpoint; plaintext HTTP is allowed only for loopback providers.'); }
   add('credentials', typeof env.SKILLDELTA_API_KEY === 'string' && env.SKILLDELTA_API_KEY.trim() ? 'pass' : 'warn', typeof env.SKILLDELTA_API_KEY === 'string' && env.SKILLDELTA_API_KEY.trim() ? 'SKILLDELTA_API_KEY is set. Its value and validity are not inspected.' : 'SKILLDELTA_API_KEY is not set. Only providers that accept unauthenticated requests can run.');

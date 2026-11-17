@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 — 2026-11-17
+
+- Add the versioned `skilldelta-http-v1` adapter for user-run coding-agent workers, alongside the default chat-completions adapter.
+- Bind the adapter to resume and comparison identities while preserving existing chat-completions fingerprints.
+- Ship a synthetic loopback worker and verify its evaluation through the CLI and Docker without model calls.
+
 ## 0.6.0
 
 - Add an installable `http-boundaries` benchmark preset covering Retry-After delays, byte-range handling, and incremental NDJSON parsing.

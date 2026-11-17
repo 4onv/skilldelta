@@ -2,6 +2,7 @@ import { readdir, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { readCheckpoint } from './checkpoint.mjs';
 import { summarize } from './runner.mjs';
+import { defaultAdapter, validateAdapter } from './provider.mjs';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const text = value => typeof value === 'string' && value.length <= 4096;
@@ -36,12 +37,15 @@ export function inspectEvaluation(report) {
   if(report.settings && (!Number.isSafeInteger(report.settings.maxOutputTokens) || report.settings.maxOutputTokens<64 || report.settings.maxOutputTokens>32768 ||
       !Number.isSafeInteger(report.settings.timeoutMs) || report.settings.timeoutMs<1000 || report.settings.timeoutMs>600000 ||
       report.settings.temperature!==0 || !text(report.settings.ordering))) invalid();
+  let adapter;
+  try { adapter = validateAdapter(report.settings?.adapter); } catch { invalid(); }
+  const adapterIdentity = adapter === defaultAdapter ? {} : { adapter };
   const summary=summarize(rows,expected);
   return {
     id:report.id,createdAt:report.createdAt,mode:report.mode,skill:{name:report.skill.name,sha256:report.skill.sha256},
     suite:{name:report.suite.name,sha256:report.suite.sha256,tests:report.suite.tests.map(t=>({id:t.id,sha256:t.sha256}))},
     model:report.model,runtime:report.runtime,seed:report.seed,trials:report.trials,
-    settings:report.settings ? {maxOutputTokens:report.settings.maxOutputTokens,timeoutMs:report.settings.timeoutMs,temperature:report.settings.temperature,ordering:report.settings.ordering} : null,
+    settings:report.settings ? {maxOutputTokens:report.settings.maxOutputTokens,timeoutMs:report.settings.timeoutMs,temperature:report.settings.temperature,ordering:report.settings.ordering,...adapterIdentity} : null,
     comparison:report.comparison ? {version:1,inputsSha256:report.comparison.inputsSha256} : null,
     completedResults:rows.length,expectedResults:expected,complete:rows.length===expected,summary,rows
   };

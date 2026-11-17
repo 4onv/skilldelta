@@ -7,6 +7,7 @@ import { mkdtemp, writeFile, readFile, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createMockAdapter } from '../examples/mock-adapter.mjs';
 
 test('Docker configuration isolates verification and never passes provider secrets', () => {
   const args = dockerArgs({ directory: '/tmp/skilldelta-work', image: 'node:22-alpine', name: 'skilldelta-test' });
@@ -83,5 +84,33 @@ test('CLI interrupts a local mock-provider request and resumes only pending atte
   } finally {
     active?.kill('SIGKILL'); server.closeAllConnections(); await new Promise(resolve=>server.close(resolve));
     await rm(directory,{recursive:true,force:true});
+  }
+});
+test('CLI evaluates a synthetic HTTP v1 adapter using Docker and saves only evidence', { skip: process.env.SKILLDELTA_DOCKER_TEST !== '1', timeout: 180000 }, async () => {
+  const out = await mkdtemp(path.join(tmpdir(), 'skilldelta-bridge-cli-'));
+  const file = relative => fileURLToPath(new URL(relative, import.meta.url));
+  const server = await createMockAdapter();
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const endpoint = `http://127.0.0.1:${server.address().port}/evaluate`;
+    const env = { ...process.env }; delete env.SKILLDELTA_API_KEY;
+    const args = [file('../bin/skilldelta.mjs'), 'run', '--suite', file('../examples/suite.json'),
+      '--skill', file('../examples/edge-cases/SKILL.md'), '--adapter', 'skilldelta-http-v1',
+      '--endpoint', endpoint, '--model', 'synthetic-fixtures', '--trials', '1', '--out', out];
+    const cli = await command(process.execPath, args, { env, timeoutMs: 120000 });
+    assert.equal(cli.code, 0, cli.output);
+    const report = JSON.parse(await readFile(path.join(out, 'results.json'), 'utf8'));
+    assert.equal(report.model, 'synthetic-fixtures');
+    assert.equal(report.settings.adapter, 'skilldelta-http-v1');
+    assert.equal(report.checkpoint.expectedResults, 6);
+    assert.equal(report.checkpoint.complete, true);
+    assert.equal(report.summary.baseline.passed, 1);
+    assert.equal(report.summary.skill.passed, 3);
+    assert.ok(report.results.every(row => row.inputTokens === 0 && row.outputTokens === 0));
+    assert.doesNotMatch(JSON.stringify(report), /127\.0\.0\.1|export function slugify/);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    await rm(out, { recursive: true, force: true });
   }
 });
