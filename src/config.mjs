@@ -1,4 +1,5 @@
-import { readFile, realpath, stat } from 'node:fs/promises';
+import { open, realpath } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 
@@ -14,8 +15,27 @@ export function safeFile(name) {
     && !name.toLowerCase().startsWith('__skilldelta') && !name.split('/').some(p => /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(p));
 }
 export async function readSmall(file, limit = 256 * 1024) {
-  if ((await stat(file)).size > limit) throw new Error(`File is too large: ${path.basename(file)}`);
-  return readFile(file, 'utf8');
+  const handle = await open(file, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
+  try {
+    const info = await handle.stat();
+    if (!info.isFile()) throw new Error('Input must be a regular file.');
+    if (info.size > limit) throw new Error(`File is too large: ${path.basename(file)}`);
+    const bytes = Buffer.allocUnsafe(info.size + 1);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, offset, bytes.length - offset);
+      if (!bytesRead) break;
+      offset += bytesRead;
+    }
+    if (offset !== info.size) throw new Error('Input file changed size while reading. Retry once the file is stable.');
+    try {
+      return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes.subarray(0, offset));
+    } catch {
+      throw new Error('Input must contain valid UTF-8 text.');
+    }
+  } finally {
+    await handle.close();
+  }
 }
 export async function loadSuite(file) {
   const root = await realpath(path.dirname(path.resolve(file)));

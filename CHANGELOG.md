@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — 2026-11-19
+
+- Add the installable `skilldelta-codex` worker for Codex CLI 0.167.2+, with fresh workspaces, structured final files, version-qualified model labels and subprocess cancellation.
+- Verify the executable contract with a synthetic subprocess, HTTP evaluations and Docker tests. Native startup checks use only `--version`; paid model behavior remains unverified.
+- Reject invalid UTF-8 and nonregular suite, skill, verifier and configuration inputs through a bounded shared reader. Preserve valid existing text fingerprints.
+- Extend bounded Windows package-smoke cleanup retries after a transient directory lock caused CI to fail after its assertions passed.
+
 ## 0.7.0 — 2026-11-17
 
 - Add the versioned `skilldelta-http-v1` adapter for user-run coding-agent workers, alongside the default chat-completions adapter.

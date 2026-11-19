@@ -5,22 +5,37 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { safeFile } from './config.mjs';
 
-export function command(executable, args, { timeoutMs = 30000, cwd, env = process.env, signal } = {}) {
+export function command(executable, args, { timeoutMs = 30000, cwd, env = process.env, signal, input } = {}) {
   return new Promise(resolve => {
     if (signal?.aborted) { resolve({ code: -1, output: '', timedOut: false, missing: false, aborted: true }); return; }
     const childEnv = { ...env };
     delete childEnv.NODE_TEST_CONTEXT;
     delete childEnv.NODE_OPTIONS;
-    const child = spawn(executable, args, { cwd, env: childEnv, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(executable, args, {
+      cwd, env: childEnv, shell: false, windowsHide: true, detached: process.platform !== 'win32',
+      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+    });
     let output = '', timedOut = false, settled = false;
     const append = data => { if (output.length < 64000) output += data.toString().slice(0, 64000 - output.length); };
     child.stdout.on('data', append); child.stderr.on('data', append);
-    const abort = () => child.kill('SIGKILL');
+    const abort = () => {
+      if (!Number.isSafeInteger(child.pid) || child.pid < 1) return;
+      if (process.platform === 'win32') {
+        const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+        killer.on('error', () => child.kill('SIGKILL'));
+      } else {
+        try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill('SIGKILL'); }
+      }
+    };
     signal?.addEventListener('abort', abort, { once: true });
-    const timer = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, timeoutMs);
+    const timer = setTimeout(() => { timedOut = true; abort(); }, timeoutMs);
     const finish = result => { if (!settled) { settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort); resolve({ ...result, aborted: Boolean(signal?.aborted) }); } };
     child.on('error', error => finish({ code: -1, output: '', timedOut, missing: error.code === 'ENOENT' }));
     child.on('close', code => finish({ code: code ?? -1, output, timedOut, missing: false }));
+    if (child.stdin) {
+      child.stdin.on('error', () => {});
+      child.stdin.end(input);
+    }
   });
 }
 export async function prepareDocker(image, { signal } = {}) {

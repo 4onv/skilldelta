@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMockAdapter } from '../examples/mock-adapter.mjs';
+import { createCodexWorker } from '../src/codex-worker.mjs';
 
 test('Docker configuration isolates verification and never passes provider secrets', () => {
   const args = dockerArgs({ directory: '/tmp/skilldelta-work', image: 'node:22-alpine', name: 'skilldelta-test' });
@@ -112,5 +113,46 @@ test('CLI evaluates a synthetic HTTP v1 adapter using Docker and saves only evid
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));
     await rm(out, { recursive: true, force: true });
+  }
+});
+
+test('CLI evaluates the Codex worker subprocess contract and verifies files with Docker',
+  { skip: process.env.SKILLDELTA_DOCKER_TEST !== '1', timeout: 180000 }, async () => {
+  const directory=await mkdtemp(path.join(tmpdir(),'skilldelta-codex-docker-'));
+  let worker;
+  try {
+    const executable=path.join(directory,'fake-codex.mjs');
+    await writeFile(executable,`
+      import {readFileSync,writeFileSync} from 'node:fs';
+      const args=process.argv.slice(2);
+      if(args[0]==='--version'){console.log('codex-cli 0.167.2');process.exit(0);}
+      const prompt=readFileSync(0,'utf8');
+      const value=prompt.includes('SKILL_ONLY')?42:0;
+      writeFileSync(args[args.indexOf('--output-last-message')+1],JSON.stringify({files:{'solution.mjs':'export const answer='+value+';'}}));
+    `);
+    worker=await createCodexWorker({model:'synthetic-codex',executable});
+    await new Promise(resolve=>worker.server.listen(0,'127.0.0.1',resolve));
+    await writeFile(path.join(directory,'checks.mjs'),"import test from 'node:test';import assert from 'node:assert/strict';import {answer} from './solution.mjs';test('answer',()=>assert.equal(answer,42));");
+    await writeFile(path.join(directory,'suite.json'),JSON.stringify({name:'Synthetic Codex executable contract',
+      tasks:[{id:'answer',title:'Answer',prompt:'Export answer=42',editableFiles:['solution.mjs'],
+        starter:{'solution.mjs':'// starter'},testFile:'checks.mjs'}]}));
+    await writeFile(path.join(directory,'SKILL.md'),'SKILL_ONLY');
+    const out=path.join(directory,'run');
+    await writeFile(path.join(directory,'skilldelta.config.json'),JSON.stringify({
+      schemaVersion:1,suite:'suite.json',skill:'SKILL.md',adapter:'skilldelta-http-v1',
+      model:worker.label,endpoint:`http://127.0.0.1:${worker.server.address().port}/evaluate`,trials:1,out,
+    }));
+    const env={...process.env};delete env.SKILLDELTA_API_KEY;
+    const result=await command(process.execPath,[fileURLToPath(new URL('../bin/skilldelta.mjs',import.meta.url)),
+      'run','--config',path.join(directory,'skilldelta.config.json')],{env,timeoutMs:120000});
+    assert.equal(result.code,0,result.output);
+    const report=JSON.parse(await readFile(path.join(out,'results.json'),'utf8'));
+    assert.equal(report.summary.baseline.passed,0);
+    assert.equal(report.summary.skill.passed,1);
+    assert.equal(report.model,'codex/0.167.2/synthetic-codex');
+    assert.equal(report.checkpoint.complete,true);
+  } finally {
+    if(worker){worker.server.closeAllConnections();await new Promise(resolve=>worker.server.close(resolve));}
+    await rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:250});
   }
 });

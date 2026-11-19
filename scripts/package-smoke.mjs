@@ -31,6 +31,9 @@ try {
   const installedRoot = path.join(prefix, 'node_modules', ...metadata.name.split('/'));
   const bin = path.join(installedRoot, 'bin/skilldelta.mjs');
   assert.equal(run(bin, ['--version']).trim(), metadata.version);
+  assert.match(run(path.join(installedRoot, 'bin/skilldelta-codex.mjs'), ['--help']), /skilldelta-codex --model MODEL/);
+  assert.ok((await stat(path.join(prefix, 'node_modules/.bin', process.platform === 'win32' ? 'skilldelta-codex.cmd' : 'skilldelta-codex'))).isFile());
+  assert.ok((await stat(path.join(installedRoot, 'src/codex-worker.mjs'))).isFile());
   assert.ok((await stat(path.join(prefix, 'node_modules/.bin', process.platform === 'win32' ? 'skilldelta.cmd' : 'skilldelta'))).isFile());
   const project = path.join(directory, 'project');
   run(bin, ['init', project]);
@@ -59,5 +62,5 @@ try {
 } finally {
   const resolved = path.resolve(directory);
   assert.ok(resolved.startsWith(path.resolve(tmpdir()) + path.sep) && path.basename(resolved).startsWith('skilldelta-package-'));
-  await rm(resolved, { recursive: true, force: true, maxRetries: 4, retryDelay: 100 });
+  await rm(resolved, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
 }

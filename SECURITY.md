@@ -20,6 +20,8 @@ The configured provider receives the task prompt, starter files, and, for the sk
 
 A custom adapter operates outside SkillDelta's verification container. Run it with credentials and filesystem access appropriate for your agent. The adapter can see any bearer key you send and is responsible for the agent's own subprocesses, isolation, and cancellation. [Adapter protocol](docs/adapters.md)
 
+The bundled Codex worker also runs on the host. It uses a fresh temporary directory, read-only Codex sandbox mode, ephemeral sessions and a structured output schema. Those settings do not isolate the agent from all host context or replace Codex's own security boundary. Keep it on loopback, use trusted inputs, and consider `SKILLDELTA_WORKER_KEY` when sharing a machine. It intentionally does not include native logs in HTTP errors or saved reports. Cleanup warnings can leave temporary generated source on disk for manual inspection.
+
 Reports include task titles and run metadata. Review them before sharing. Keep credentials in `SKILLDELTA_API_KEY` or your CI secret store; do not paste them into a suite, skill, model identifier, endpoint URL, issue, or report.
 
 Live checkpoints contain the same outcome metadata and a fingerprint of evaluation inputs. They omit generated source, raw responses, keys, skill text and test source. Checkpoints are editable local progress records; resume validation establishes input compatibility and structural consistency, not independent proof that tests ran. Protect the output directory from untrusted writers. A cancelled provider request may still be processed or billed; interrupted attempts can be retried on resume.

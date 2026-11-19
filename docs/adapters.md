@@ -2,6 +2,36 @@
 
 SkillDelta prepares a fresh request for each baseline or skill attempt. The default `chat-completions` adapter asks for complete files in a single message. The optional `skilldelta-http-v1` adapter sends a structured task to an HTTP worker you operate. That worker can run your agent's native skill workflow and return the final files for SkillDelta's Docker verifier.
 
+## Run the Codex CLI worker
+
+Install and authenticate Codex CLI separately. This worker requires **Codex CLI 0.167.2 or newer** and uses its existing authentication. Starting the worker runs only `codex --version`; model requests begin when an evaluation reaches it. Model calls may incur charges. The executable contract was checked against installed CLI 0.167.2; tests use a visibly synthetic executable and real Docker verification. A paid model evaluation has not been performed for this release.
+
+Start the installed worker in one terminal, choosing a model available to your Codex account:
+
+```sh
+skilldelta-codex --model YOUR_CODEX_MODEL
+```
+
+The worker listens at `http://127.0.0.1:8788/evaluate` and prints a model label such as `codex/0.167.2/YOUR_CODEX_MODEL`. Copy the actual printed label into the evaluation. In another terminal, with Docker running in Linux container mode:
+
+```sh
+skilldelta init codex-evaluation
+cd codex-evaluation
+skilldelta run --adapter skilldelta-http-v1 --endpoint http://127.0.0.1:8788/evaluate --model codex/0.167.2/YOUR_CODEX_MODEL --timeout-ms 150000 --dry-run
+```
+
+Remove `--dry-run` to make model requests. The starter evaluation uses three tasks, three trials and two conditions: **18 calls**. Use `--trials 1` for a six-call first run. Keep the adapter, endpoint and exact model label in your config to resume the same evaluation. The default worker timeout is 120 seconds per attempt; the client example allows 150 seconds for that attempt and cleanup.
+
+Each attempt gets a fresh temporary directory containing only declared starter files and an output schema. The worker passes the task and optional skill through stdin to `codex exec --ignore-user-config --ephemeral --skip-git-repo-check --sandbox read-only`, requests structured final file contents, then sends those files to SkillDelta for held-out Docker tests. Codex does not receive the verifier through the worker. Cancellation or timeout terminates the subprocess tree; completed source is removed during cleanup. A cleanup warning names any directory that could not be removed.
+
+This evaluates skill text supplied in the prompt. It does not install a native skill directory or test an agent's skill-discovery mechanism. Codex runs on the host with its own authentication, environment, sandbox behavior and applicable rules. The fresh directory is not a hermetic machine. Use trusted tasks and review your Codex setup. The model label records the executable version and model, but cannot detect remote model drift or every environment change.
+
+The worker validates the HTTP limits but **does not map `maxOutputTokens` or temperature to native Codex generation controls**. Its native call is bounded by wall time and its returned JSON by 1 MiB. Token usage is reported as unknown. Use a stable worker setup for paired comparisons; this is not a token-budget comparison with the chat-completions adapter.
+
+Options: `--port` changes the loopback port; `--timeout-ms` accepts 1000–600000; `--executable` selects a binary or `.js`/`.mjs` CLI entry point. On Windows, the worker looks for the standard npm Codex JavaScript entry before `codex.exe`, avoiding a shell wrapper. To require worker authentication, set `SKILLDELTA_WORKER_KEY` in the worker terminal and the same value as `SKILLDELTA_API_KEY` in the client terminal. These keys protect the local HTTP interface; Codex keeps its separate provider authentication. Keep the server on loopback and do not expose it publicly.
+
+From source, substitute `node bin/skilldelta-codex.mjs` for `skilldelta-codex`. Run `skilldelta-codex --help` to inspect options without probing Codex or contacting a provider.
+
 ## Run the synthetic worker locally
 
 From the source checkout, start the bundled loopback server in one terminal.

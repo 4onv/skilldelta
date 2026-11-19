@@ -13,14 +13,14 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Run paired evaluations through a chat-completions endpoint or connect your own coding agent over the versioned HTTP adapter. Both paths use the same held-out tests, resumable checkpoints, and saved-run regression checks. [Adapter protocol and runnable mock](docs/adapters.md) · [Benchmark tasks](examples/http-boundaries/README.md) · [Action usage](docs/action.md)
+Run paired evaluations through a chat-completions endpoint, the bundled **Codex CLI worker**, or your own HTTP worker. Each path uses the same held-out tests, resumable checkpoints, and saved-run regression checks. [Connect Codex](docs/adapters.md#run-the-codex-cli-worker) · [Benchmark tasks](examples/http-boundaries/README.md) · [Action usage](docs/action.md)
 
 ## Try it in a minute
 
-Install Node.js 22 or newer and download `4onv-skilldelta-0.7.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.7.0)
+Install Node.js 22 or newer and download `4onv-skilldelta-0.8.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.8.0)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.7.0.tgz
+npm install -g ./4onv-skilldelta-0.8.0.tgz
 skilldelta demo
 ```
 
