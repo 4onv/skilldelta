@@ -28,7 +28,11 @@ export function inspectEvaluation(report) {
       !token(row.inputTokens) || !token(row.outputTokens) || !Number.isSafeInteger(row.durationMs) || row.durationMs<0) invalid();
     const key=row.taskId+':'+row.trial+':'+row.condition;
     if(seen.has(key)) invalid(); seen.add(key);
-    rows.push({taskId:row.taskId,taskTitle:row.taskTitle,trial:row.trial,condition:row.condition,status:row.status,passed:row.passed});
+    rows.push({
+      taskId:row.taskId, taskTitle:row.taskTitle, trial:row.trial, condition:row.condition,
+      status:row.status, passed:row.passed, durationMs:row.durationMs,
+      inputTokens:row.inputTokens, outputTokens:row.outputTokens,
+    });
   }
   const cp=report.checkpoint;
   if(cp && (cp.version!==1 || !hash(cp.planSha256) || cp.expectedResults!==expected || cp.complete!==(rows.length===expected))) invalid();
@@ -53,6 +57,17 @@ export function inspectEvaluation(report) {
 
 function publicRun(run) {
   const {rows,...metadata}=run;return metadata;
+}
+
+/** CSV uses validated slugs and fixed labels so cells never contain free-form text or formulas. */
+export function exportAttemptsCsv(report) {
+  const run = inspectEvaluation(report);
+  const header = 'mode,run_complete,task_id,trial,condition,status,duration_ms,input_tokens,output_tokens';
+  const rows = run.rows.map(row => [
+    run.mode, run.complete, row.taskId, row.trial, row.condition,
+    row.status, row.durationMs, row.inputTokens, row.outputTokens,
+  ].join(','));
+  return [header, ...rows].join('\n') + '\n';
 }
 
 /** A conservative comparison of saved observations, never a significance test. */

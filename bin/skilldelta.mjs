@@ -10,7 +10,7 @@ import { runEvaluation, summarize } from '../src/runner.mjs';
 import { renderReport, renderBadge } from '../src/report.mjs';
 import { initialize, diagnose, loadProjectConfig, validateRunOptions } from '../src/onboarding.mjs';
 import { atomicJson, openRunDirectory, readCheckpoint } from '../src/checkpoint.mjs';
-import { compareEvaluations, listHistory } from '../src/history.mjs';
+import { compareEvaluations, exportAttemptsCsv, listHistory } from '../src/history.mjs';
 import { defaultAdapter } from '../src/provider.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -37,8 +37,15 @@ async function save(report, out) {
 async function main() {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: Object.fromEntries(['out','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image','config','preset'].map(k => [k, { type: 'string' }]).concat(['help','version','dry-run','fail-on-regression','json','resume'].map(k => [k, { type: 'boolean' }]))) });
   if (values.version) { console.log(packageInfo.version); return; }
-  if (values.help || !positionals.length) { console.log(onboardingHelp + help + '\nSaved evaluations (read-only, no model calls):\n  skilldelta history [DIRECTORY] [--json]\n  skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]\nComparison requires matching evaluation inputs; only the skill may change.\n'); return; }
+  if (values.help || !positionals.length) { console.log(onboardingHelp + help + '\nSaved evaluations (read-only, no model calls):\n  skilldelta history [DIRECTORY] [--json]\n  skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]\n  skilldelta export-csv RESULTS_OR_CHECKPOINT.json\nComparison requires matching evaluation inputs; only the skill may change.\n'); return; }
   const [command, input] = positionals;
+  if (command === 'export-csv') {
+    if (positionals.length !== 2 || Object.keys(values).length) {
+      throw new Error('Usage: skilldelta export-csv RESULTS_OR_CHECKPOINT.json');
+    }
+    process.stdout.write(exportAttemptsCsv(await readCheckpoint(input)));
+    return;
+  }
   if (!['demo','run','report','init','doctor','history','compare'].includes(command)) throw new Error(`Unknown command: ${command}`);
   if (positionals.length > (command==='compare'?3:['report','init','history'].includes(command)?2:1)) throw new Error('Unexpected positional argument.');
   const accepted = command==='compare'?['json','fail-on-regression']:command==='history'?['json']:command === 'init' ? ['preset'] : command === 'doctor' ? ['config','json','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image'] : ['demo','report'].includes(command) ? ['out'] : ['out','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image','config','dry-run','fail-on-regression','resume'];

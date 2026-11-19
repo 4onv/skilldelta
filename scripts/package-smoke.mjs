@@ -52,6 +52,7 @@ try {
   const report = JSON.parse(await readFile(path.join(directory,'demo/results.json'),'utf8'));
   assert.equal(report.mode,'demo'); assert.equal(report.summary.baseline.passed,1); assert.equal(report.summary.skill.passed,3);
   assert.equal(report.checkpoint.complete,true); assert.equal(report.checkpoint.expectedResults,6);
+  assert.match(run(bin, ['export-csv', path.join(directory, 'demo/results.json')]), /\ndemo,true,.*,(baseline|skill),/u);
   assert.match(run(bin,['--help']),/--resume/);
   assert.equal(JSON.parse(run(bin,['history',directory,'--json'])).runs.length,1);
   run(bin,['demo','--out',path.join(directory,'second-demo')]);

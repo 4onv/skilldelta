@@ -16,6 +16,33 @@ const run=changes=>runEvaluation({...base,...changes});
 const bin=fileURLToPath(new URL('../bin/skilldelta.mjs',import.meta.url));
 function cli(args){const env={...process.env};delete env.NODE_TEST_CONTEXT;delete env.NODE_OPTIONS;return spawnSync(process.execPath,[bin,...args],{encoding:'utf8',env,windowsHide:true,timeout:20000});}
 
+test('CSV exports completed attempts from a partial checkpoint without free-form metadata', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'skilldelta-csv-'));
+  try {
+    const file = path.join(dir, 'checkpoint.json');
+    const saved = await run();
+    saved.results = [{
+      ...saved.results[0], taskTitle: '=PRIVATE_TITLE()', durationMs: 42, inputTokens: null, outputTokens: 0,
+    }];
+    saved.checkpoint.complete = false;
+    await writeFile(file, JSON.stringify(saved));
+    const output = cli(['export-csv', file]);
+    assert.equal(output.status, 0, output.stderr);
+    const fields = output.stdout.trim().split(/\r?\n/u);
+    assert.equal(fields[0], 'mode,run_complete,task_id,trial,condition,status,duration_ms,input_tokens,output_tokens');
+    assert.match(fields[1], /^live,false,a,1,(baseline|skill),passed,42,,0$/u);
+    assert.equal(fields.length, 2);
+    assert.doesNotMatch(output.stdout, /PRIVATE|example|mock/u);
+    saved.results[0].durationMs = -1;
+    await writeFile(file, JSON.stringify(saved));
+    const invalid = cli(['export-csv', file]);
+    assert.equal(invalid.status, 2);
+    assert.equal(invalid.stdout, '');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('changed skills are comparable while baseline, skill and effect changes remain separate',async()=>{
   const before=await run();let index=0;
   const after=await run({skill:{...base.skill,text:'revised',sha256:sha256('revised')},checkFn:async()=>{const passed=++index!==2;return {passed,status:passed?'passed':'failed'};}});

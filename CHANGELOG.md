@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0 — 2026-11-19
+
+- Export completed attempts from saved results or checkpoints as CSV, including simulation and completion flags and blank cells for unknown token counts.
+
 ## 0.8.0 — 2026-11-19
 
 - Add the installable `skilldelta-codex` worker for Codex CLI 0.167.2+, with fresh workspaces, structured final files, version-qualified model labels and subprocess cancellation.

@@ -17,10 +17,10 @@ Run paired evaluations through a chat-completions endpoint, the bundled **Codex 
 
 ## Try it in a minute
 
-Install Node.js 22 or newer and download `4onv-skilldelta-0.8.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.8.0)
+Install Node.js 22 or newer and download `4onv-skilldelta-0.9.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.9.0)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.8.0.tgz
+npm install -g ./4onv-skilldelta-0.9.0.tgz
 skilldelta demo
 ```
 
@@ -116,6 +116,15 @@ skilldelta compare .skilldelta/before/results.json .skilldelta/after/results.jso
 These commands read saved files without executing tests or contacting a model. History inspects the root and its immediate run folders, preferring the latest atomic checkpoint to a possibly older results file. Comparisons require fingerprints recorded by version 0.4 or newer. The skill can change. The suite, tests, adapter, endpoint, model, seed, trials, generation settings and resolved runtime must agree. Earlier results still appear in history but cannot establish input compatibility.
 
 The comparison separates baseline pass-rate change, skill pass-rate change and the change in the measured skill effect. `compare --fail-on-regression` exits 1 only when that last quantity decreases. Partial runs and provider/runtime errors stay inconclusive; incompatible inputs exit 2. Model randomness and provider drift remain possible even with matching fingerprints. Results are editable local observations, not signatures or statistical evidence. [Limits and examples](docs/cli.md#history-and-compare)
+
+## Export attempts for analysis
+
+```sh
+skilldelta demo
+skilldelta export-csv .skilldelta/demo/results.json > attempts.csv
+```
+
+The CSV has one row per completed attempt, with task ID, trial, condition, status, duration and reported token counts. Unknown token counts are blank. The `mode` and `run_complete` columns identify simulated and partial runs. You can also export a `checkpoint.json` while a run is in progress. Import `task_id` as text in spreadsheet software to preserve IDs such as `001`.
 
 ## Development
 
