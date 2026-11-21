@@ -32,6 +32,8 @@ Options: `--port` changes the loopback port; `--timeout-ms` accepts 1000–60000
 
 From source, substitute `node bin/skilldelta-codex.mjs` for `skilldelta-codex`. Run `skilldelta-codex --help` to inspect options without probing Codex or contacting a provider.
 
+Ctrl+C stops accepting requests, cancels the active Codex subprocess if there is one, and waits for temporary workspace cleanup. An interrupted request may already have incurred provider charges. Resume from the evaluation checkpoint after starting the worker again.
+
 ## Run the synthetic worker locally
 
 From the source checkout, start the bundled loopback server in one terminal.

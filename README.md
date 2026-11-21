@@ -17,10 +17,10 @@ Run paired evaluations through a chat-completions endpoint, the bundled **Codex 
 
 ## Try it in a minute
 
-Install Node.js 22 or newer and download `4onv-skilldelta-0.9.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.9.0)
+Install Node.js 22 or newer and download `4onv-skilldelta-0.9.1.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.9.1)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.9.0.tgz
+npm install -g ./4onv-skilldelta-0.9.1.tgz
 skilldelta demo
 ```
 

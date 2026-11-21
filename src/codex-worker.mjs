@@ -67,7 +67,8 @@ export async function createCodexWorker({ model, executable, key, timeoutMs = 12
     throw new Error('Codex CLI 0.167.2 or newer is required. Check the executable or JavaScript entry point.');
   }
   const label = 'codex/' + versionCheck.output.trim().slice('codex-cli '.length) + '/' + model;
-  let busy = false;
+  let active;
+  let shutdown;
 
   const server = createServer({ requestTimeout: 30000, headersTimeout: 10000 }, async (request,response) => {
     const send = (status, payload) => {
@@ -78,9 +79,11 @@ export async function createCodexWorker({ model, executable, key, timeoutMs = 12
     if (request.headers.origin || request.headers['content-type']?.split(';')[0].trim().toLowerCase() !== 'application/json') {
       request.resume(); send(415,{ error:'Send application/json from the evaluation client.' }); return;
     }
-    if (busy) { request.resume(); send(409,{ error:'Worker is already handling an attempt.' }); return; }
-    busy = true;
+    if (shutdown) { request.resume(); send(503,{ error:'Worker is stopping.' }); return; }
+    if (active) { request.resume(); send(409,{ error:'Worker is already handling an attempt.' }); return; }
     const controller = new AbortController();
+    const stopped = Promise.withResolvers();
+    active = { controller, done: stopped.promise };
     const disconnected = () => { if (!response.writableEnded) controller.abort(); };
     response.once('close',disconnected);
     let directory;
@@ -90,6 +93,7 @@ export async function createCodexWorker({ model, executable, key, timeoutMs = 12
       let input;
       try { input = validateRequest(await collect(request),label); }
       catch { finish(400,{ error:'Expected a valid HTTP v1 task and the printed model label.' }); return; }
+      controller.signal.throwIfAborted();
       directory = await mkdtemp(path.join(tmpdir(),'skilldelta-codex-'));
       for (const name of input.task.editableFiles) {
         const target = path.join(directory,name);
@@ -123,10 +127,23 @@ export async function createCodexWorker({ model, executable, key, timeoutMs = 12
       } catch {
         server.emit('workerWarning', 'Could not remove the temporary workspace. Inspect ' + directory);
       } finally {
-        busy = false;
-        if (finalResponse) send(finalResponse.status, finalResponse.payload);
+        active = undefined;
+        try {
+          if (finalResponse) send(finalResponse.status, finalResponse.payload);
+        } finally {
+          stopped.resolve();
+        }
       }
     }
   });
-  return { server, label };
+  function close() {
+    if (shutdown) return shutdown;
+    const attempt = active;
+    const serverClosed = new Promise(resolve => server.close(() => resolve()));
+    shutdown = Promise.all([serverClosed, attempt?.done]).then(() => {});
+    attempt?.controller.abort();
+    server.closeAllConnections();
+    return shutdown;
+  }
+  return { server, label, close };
 }

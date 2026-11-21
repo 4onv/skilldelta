@@ -15,8 +15,17 @@ async function main() {
   if (!/^\d+$/u.test(values.port) || !Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('Port must be an integer from 1 to 65535.');
   }
-  const { server,label } = await createCodexWorker({ model:values.model, executable:values.executable,
+  const { server,label,close } = await createCodexWorker({ model:values.model, executable:values.executable,
     key:process.env.SKILLDELTA_WORKER_KEY, timeoutMs:Number(values['timeout-ms']) });
+  let stopping = false;
+  const stop = status => {
+    if (stopping) return;
+    stopping = true;
+    process.exitCode = status;
+    void close();
+  };
+  process.on('SIGINT', () => stop(130));
+  process.on('SIGTERM', () => stop(143));
   server.on('workerWarning',message => console.error(message));
   server.on('error',() => { console.error('Cannot listen on the loopback worker port.'); process.exitCode=2; });
   server.listen(port,'127.0.0.1',() => {

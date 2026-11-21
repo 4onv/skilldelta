@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createCodexWorker } from '../src/codex-worker.mjs';
 import { generate } from '../src/provider.mjs';
 import { command } from '../src/execute.mjs';
 
-async function fixture(t,{timeoutMs=10000,key}={}) {
+async function fixture(t,{timeoutMs=10000,key,onCommand}={}) {
   const directory=await mkdtemp(path.join(tmpdir(),'skilldelta-fake-codex-'));
   const executable=path.join(directory,'fake-codex.mjs');
   await writeFile(executable, String.raw`
@@ -36,12 +36,15 @@ async function fixture(t,{timeoutMs=10000,key}={}) {
     writeFileSync(file,JSON.stringify({files:{'solution.mjs':'export const answer='+answer+';'}}));
     console.log('PRIVATE_NATIVE_LOG');
   `);
-  const worker=await createCodexWorker({model:'fake-model',executable,key,timeoutMs});
+  const worker=await createCodexWorker({model:'fake-model',executable,key,timeoutMs,
+    commandFn: (program,args,options) => {
+      if (args[1] === 'exec') onCommand?.(options.cwd);
+      return command(program,args,options);
+    }});
   await new Promise(resolve=>worker.server.listen(0,'127.0.0.1',resolve));
   const endpoint='http://127.0.0.1:'+worker.server.address().port+'/evaluate';
   t.after(async()=>{
-    worker.server.closeAllConnections();
-    await new Promise(resolve=>worker.server.close(resolve));
+    await worker.close();
     await rm(directory,{recursive:true,force:true,maxRetries:4,retryDelay:100});
   });
   const task={id:'answer',prompt:'Export answer.',editableFiles:['solution.mjs'],starter:{'solution.mjs':'// starter'},
@@ -94,15 +97,19 @@ test('worker startup checks the CLI version without issuing an exec request',asy
   await assert.rejects(createCodexWorker({model:'fake-model',commandFn:async()=>({code:0,output:'codex-cli 0.166.0'})}),/0.167.2/);
 });
 
-test('a disconnected evaluation cancels its subprocess and releases the worker for the next attempt',async t=>{
-  const {request}=await fixture(t);
+test('a disconnected evaluation cancels its subprocess and releases the worker for the next attempt', {timeout:30000}, async t=>{
+  const started=Promise.withResolvers();
+  const {request}=await fixture(t,{onCommand:started.resolve,timeoutMs:120000});
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),300);
-  try {
-    await assert.rejects(generate({...request,task:{...request.task,prompt:'HANG_FOR_TEST'},signal:controller.signal}),/abort/i);
-  } finally { clearTimeout(timer); }
+  const cancelled=assert.rejects(generate({
+    ...request,task:{...request.task,prompt:'HANG_FOR_TEST'},signal:controller.signal,
+  }),/abort/i);
+  await started.promise;
+  controller.abort();
+  await cancelled;
   let recovered=false;
-  for(let attempt=0;attempt<30;attempt++){
+  const deadline=Date.now()+10000;
+  while(Date.now()<deadline){
     try {
       const result=await generate(request);
       assert.equal(result.files['solution.mjs'],'export const answer=0;');
@@ -124,4 +131,20 @@ test('subprocess stdin preserves large prompts without command-line arguments or
     });
   assert.equal(result.code,0,result.output);
   assert.equal(result.output.trim(),String(input.length));
+});
+
+test('closing the worker cancels an active subprocess and waits for workspace cleanup', {timeout:15000}, async t => {
+  const started = Promise.withResolvers();
+  const { worker, request } = await fixture(t, {timeoutMs:120000, onCommand:started.resolve});
+  const interrupted = assert.rejects(generate({
+    ...request, task:{...request.task,prompt:'HANG_FOR_TEST'},
+  }));
+  const workspace = await started.promise;
+  await access(workspace);
+  const closing = worker.close();
+  assert.equal(worker.close(), closing);
+  await closing;
+  await interrupted;
+  await assert.rejects(access(workspace), {code:'ENOENT'});
+  assert.equal(worker.server.listening, false);
 });

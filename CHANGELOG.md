@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1 — 2026-11-21
+
+- Stop accepting requests when the Codex worker receives Ctrl+C or SIGTERM. Cancel the active subprocess and wait for temporary workspace cleanup before exiting.
+
 ## 0.9.0 — 2026-11-19
 
 - Export completed attempts from saved results or checkpoints as CSV, including simulation and completion flags and blank cells for unknown token counts.
