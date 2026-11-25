@@ -122,3 +122,34 @@ test('CLI regression gate uses change in skill effect and rejects incomplete or 
     assert.equal(cli(['compare',a]).status,2);assert.equal(cli(['history',dir,'--out','ignored']).status,2);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('CLI task gate catches opposite task changes even when the overall effect is unchanged', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'skilldelta-task-gate-'));
+  try {
+    const pair = { ...suite, tasks: [...suite.tasks, { ...suite.tasks[0], id: 'b' }] };
+    const previous = await run({ suite: pair });
+    const current = await run({ suite: pair });
+    for (const [saved, taskId] of [[previous, 'b'], [current, 'a']]) {
+      const row = saved.results.find(row => row.taskId === taskId && row.condition === 'skill');
+      row.passed = false;
+      row.status = 'failed';
+    }
+    const before = path.join(dir, 'before.json'), after = path.join(dir, 'after.json');
+    await writeFile(before, JSON.stringify(previous));
+    await writeFile(after, JSON.stringify(current));
+    const compare = ['compare', before, after];
+    assert.equal(cli([...compare, '--fail-on-regression']).status, 0);
+    const strict = cli([...compare, '--max-task-regression-pp', '0', '--json']);
+    assert.equal(strict.status, 1, strict.stderr);
+    const result = JSON.parse(strict.stdout);
+    assert.equal(result.changes.skillEffectPercentagePoints, 0);
+    assert.deepEqual(result.tasks.map(task => [task.id, task.skillEffectPercentagePoints]), [['a', -50], ['b', 50]]);
+    const text = cli([...compare, '--max-task-regression-pp', '25']);
+    assert.equal(text.status, 1, text.stderr);
+    assert.match(text.stdout, /Task a: -50.00 pp/);
+    assert.equal(cli([...compare, '--max-task-regression-pp', '50']).status, 0);
+    assert.equal(cli([...compare, '--max-task-regression-pp', '201']).status, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

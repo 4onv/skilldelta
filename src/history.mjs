@@ -70,6 +70,15 @@ export function exportAttemptsCsv(report) {
   return [header, ...rows].join('\n') + '\n';
 }
 
+export function parseRegressionTolerance(value, label) {
+  const raw = value.trim();
+  const number = Number(raw);
+  if (!/^\d+(?:\.\d+)?$/.test(raw) || number > 200) {
+    throw new Error(label + ' must be a decimal number from 0 to 200.');
+  }
+  return number;
+}
+
 /** A conservative comparison of saved observations, never a significance test. */
 export function compareEvaluations(previousInput,currentInput) {
   const previous=inspectEvaluation(previousInput),current=inspectEvaluation(currentInput),reasons=[];
@@ -100,7 +109,9 @@ export function compareEvaluations(previousInput,currentInput) {
   result.tasks=previous.suite.tests.map(({id})=>{
     const before=summarize(previous.rows.filter(r=>r.taskId===id));
     const after=summarize(current.rows.filter(r=>r.taskId===id));
-    return {id,previousBaseline:before.baseline.passed,currentBaseline:after.baseline.passed,previousSkill:before.skill.passed,currentSkill:after.skill.passed,trials:current.trials};
+    const effectChange = (after.skill.passed - before.skill.passed) - (after.baseline.passed - before.baseline.passed);
+    return {id,previousBaseline:before.baseline.passed,currentBaseline:after.baseline.passed,previousSkill:before.skill.passed,currentSkill:after.skill.passed,trials:current.trials,
+      skillEffectPercentagePoints: effectChange * 100 / current.trials};
   });
   return result;
 }

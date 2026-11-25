@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.0 — 2026-11-25
+
+- Report each task's change in measured skill effect. Add an optional task-level tolerance to the saved comparison CLI and GitHub Action so aggregate totals cannot hide an individual task's decline.
+
 ## 0.9.1 — 2026-11-21
 
 - Stop accepting requests when the Codex worker receives Ctrl+C or SIGTERM. Cancel the active subprocess and wait for temporary workspace cleanup before exiting.

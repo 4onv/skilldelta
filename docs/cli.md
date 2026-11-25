@@ -159,20 +159,20 @@ Recalculates the summary and writes `results.json`, `report.html`, and `badge.sv
 
 ```sh
 skilldelta history [DIRECTORY] [--json]
-skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]
+skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression] [--max-task-regression-pp N]
 ```
 
 The history directory defaults to `.skilldelta`. The command reads that directory and its immediate child directories, looking for `checkpoint.json` first, then `results.json`. It does not recurse into further descendants or follow symlinked files/folders. Up to 100 child folders and 1000 root entries are accepted. Invalid candidates produce warnings rather than disappearing silently; an invalid preferred checkpoint does not fall back to an older result. History performs no writes. JSON output includes local filenames, run metadata and recomputed summaries, so review it before sharing.
 
 Comparisons require two distinct evaluation IDs and comparison identity version 1, written by SkillDelta 0.4 or newer. The hashed identity covers the full loaded suite and hidden tests, adapter, provider endpoint, model identifier, seed, trial count, resolved Docker image, generation limits and demo fixtures where relevant. Only the skill is excluded. The endpoint and hidden source remain undisclosed. Disclosed metadata is checked too. Demo/live mixtures are incompatible, and demo comparisons are explicitly labeled simulated. Old reports with missing input fingerprints remain available in history. Resuming an old checkpoint with unchanged inputs records the comparison identity from the validated current plan.
 
-Both runs must contain all expected unique task/trial/condition outcomes and no provider/runtime errors before changes are calculated. Stored summaries are ignored. The JSON comparison reports previous/current summaries, per-task pass counts, and three changes in percentage points:
+Both runs must contain all expected unique task/trial/condition outcomes and no provider/runtime errors before changes are calculated. Stored summaries are ignored. The JSON comparison reports previous/current summaries, per-task pass counts and effect changes, and three overall changes in percentage points:
 
 - Baseline pass rate: current minus previous.
 - Skill pass rate: current minus previous.
 - Measured skill effect: current `(skill - baseline)` minus previous `(skill - baseline)`.
 
-For example, a baseline change from 40% to 60% and a skill change from 60% to 80% leave the measured skill effect unchanged at +20 percentage points. The comparison gate uses the change in that effect. It does not gate the current skill's absolute pass rate. Comparisons emit JSON to stdout with `--json`; shell redirection can save it. They never update input files or output directories.
+For example, a baseline change from 40% to 60% and a skill change from 60% to 80% leave the measured skill effect unchanged at +20 percentage points. The comparison gate uses the change in that effect. It does not gate the current skill's absolute pass rate. Use `--max-task-regression-pp N` to fail when an individual task's effect declines by more than N percentage points, even if the overall effect is unchanged. A decrease equal to N passes. The task tolerance accepts decimal values from 0 to 200 and can be combined with `--fail-on-regression`. Small trial counts make individual task changes coarse. Comparisons emit JSON to stdout with `--json`; shell redirection can save it. They never update input files or output directories.
 
 To try the workflow without a model or Docker:
 

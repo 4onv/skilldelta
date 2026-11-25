@@ -11,6 +11,9 @@ inputs:
     description: Maximum permitted decrease in skill effect, in percentage points.
     required: false
     default: '0'
+  max_task_regression_pp:
+    description: Optional maximum permitted effect decrease for any individual task, in percentage points.
+    required: false
 outputs:
   status:
     description: pass, regression, incompatible, inconclusive, or invalid.

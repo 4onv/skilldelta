@@ -10,7 +10,7 @@ import { runEvaluation, summarize } from '../src/runner.mjs';
 import { renderReport, renderBadge } from '../src/report.mjs';
 import { initialize, diagnose, loadProjectConfig, validateRunOptions } from '../src/onboarding.mjs';
 import { atomicJson, openRunDirectory, readCheckpoint } from '../src/checkpoint.mjs';
-import { compareEvaluations, exportAttemptsCsv, listHistory } from '../src/history.mjs';
+import { compareEvaluations, exportAttemptsCsv, listHistory, parseRegressionTolerance } from '../src/history.mjs';
 import { defaultAdapter } from '../src/provider.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -35,9 +35,9 @@ async function save(report, out) {
   console.log(`\n${report.summary.verdict}\nBaseline ${report.summary.baseline.passed}/${report.summary.baseline.total} → Skill ${report.summary.skill.passed}/${report.summary.skill.total}\nReport: ${path.resolve(out, 'report.html')}`);
 }
 async function main() {
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: Object.fromEntries(['out','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image','config','preset'].map(k => [k, { type: 'string' }]).concat(['help','version','dry-run','fail-on-regression','json','resume'].map(k => [k, { type: 'boolean' }]))) });
+  const { values, positionals } = parseArgs({ allowPositionals: true, options: Object.fromEntries(['out','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image','config','preset','max-task-regression-pp'].map(k => [k, { type: 'string' }]).concat(['help','version','dry-run','fail-on-regression','json','resume'].map(k => [k, { type: 'boolean' }]))) });
   if (values.version) { console.log(packageInfo.version); return; }
-  if (values.help || !positionals.length) { console.log(onboardingHelp + help + '\nSaved evaluations (read-only, no model calls):\n  skilldelta history [DIRECTORY] [--json]\n  skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression]\n  skilldelta export-csv RESULTS_OR_CHECKPOINT.json\nComparison requires matching evaluation inputs; only the skill may change.\n'); return; }
+  if (values.help || !positionals.length) { console.log(onboardingHelp + help + '\nSaved evaluations (read-only, no model calls):\n  skilldelta history [DIRECTORY] [--json]\n  skilldelta compare PREVIOUS.json CURRENT.json [--json] [--fail-on-regression] [--max-task-regression-pp N]\n  skilldelta export-csv RESULTS_OR_CHECKPOINT.json\nComparison requires matching evaluation inputs; only the skill may change.\n'); return; }
   const [command, input] = positionals;
   if (command === 'export-csv') {
     if (positionals.length !== 2 || Object.keys(values).length) {
@@ -48,7 +48,7 @@ async function main() {
   }
   if (!['demo','run','report','init','doctor','history','compare'].includes(command)) throw new Error(`Unknown command: ${command}`);
   if (positionals.length > (command==='compare'?3:['report','init','history'].includes(command)?2:1)) throw new Error('Unexpected positional argument.');
-  const accepted = command==='compare'?['json','fail-on-regression']:command==='history'?['json']:command === 'init' ? ['preset'] : command === 'doctor' ? ['config','json','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image'] : ['demo','report'].includes(command) ? ['out'] : ['out','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image','config','dry-run','fail-on-regression','resume'];
+  const accepted = command==='compare'?['json','fail-on-regression','max-task-regression-pp']:command==='history'?['json']:command === 'init' ? ['preset'] : command === 'doctor' ? ['config','json','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image'] : ['demo','report'].includes(command) ? ['out'] : ['out','suite','skill','model','endpoint','adapter','trials','seed','max-output-tokens','timeout-ms','image','config','dry-run','fail-on-regression','resume'];
   for (const key of Object.keys(values)) if (!accepted.includes(key)) throw new Error(`--${key} is not valid for ${command}.`);
   if(command==='history'){
     const history=await listHistory(input??'.skilldelta');
@@ -64,15 +64,23 @@ async function main() {
   }
   if(command==='compare'){
     if(positionals.length!==3)throw new Error('Provide previous and current results/checkpoint files.');
+    const rawTolerance = values['max-task-regression-pp'];
+    const taskTolerance = rawTolerance === undefined ? undefined : parseRegressionTolerance(rawTolerance, '--max-task-regression-pp');
     const comparison=compareEvaluations(await readCheckpoint(input),await readCheckpoint(positionals[2]));
+    const regressions = taskTolerance === undefined ? [] : comparison.tasks.filter(task => task.skillEffectPercentagePoints < -taskTolerance);
     if(values.json)console.log(JSON.stringify(comparison,null,2));
     else {
       console.log(`${comparison.simulated?'SIMULATED DEMO · ':''}${comparison.status.toUpperCase()}`);
       for(const reason of comparison.reasons)console.log(reason);
       if(comparison.changes){const c=comparison.changes;console.log(`Baseline change: ${c.baselinePercentagePoints.toFixed(1)} pp\nSkill change: ${c.skillPercentagePoints.toFixed(1)} pp\nChange in measured skill effect: ${c.skillEffectPercentagePoints.toFixed(1)} pp\nObserved samples only; no statistical significance or deterministic-model claim.`);}
     }
+    if (!values.json) {
+      for (const task of regressions) {
+        console.log('Task ' + task.id + ': ' + task.skillEffectPercentagePoints.toFixed(2) + ' pp (allowed decrease: ' + taskTolerance + ')');
+      }
+    }
     if(comparison.status!=='comparable')process.exitCode=2;
-    else if(values['fail-on-regression']&&comparison.changes.skillEffectPercentagePoints<0)process.exitCode=1;
+    else if (regressions.length || (values['fail-on-regression'] && comparison.changes.skillEffectPercentagePoints < 0)) process.exitCode=1;
     return;
   }
   if (command === 'init') {

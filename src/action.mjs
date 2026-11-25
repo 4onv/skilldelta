@@ -1,7 +1,7 @@
 import { appendFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { readCheckpoint } from './checkpoint.mjs';
-import { compareEvaluations } from './history.mjs';
+import { compareEvaluations, parseRegressionTolerance } from './history.mjs';
 
 async function evaluate(env) {
   const previousFile = env.INPUT_PREVIOUS;
@@ -10,10 +10,15 @@ async function evaluate(env) {
     return { status: 'invalid', message: 'Provide both previous and current saved evaluation paths.' };
   }
 
-  const rawThreshold = (env.INPUT_MAX_REGRESSION_PP ?? '0').trim();
-  const threshold = Number(rawThreshold);
-  if (!/^\d+(?:\.\d+)?$/.test(rawThreshold) || threshold < 0 || threshold > 200) {
-    return { status: 'invalid', message: 'max_regression_pp must be a decimal number from 0 to 200.' };
+  let threshold, taskThreshold;
+  try {
+    threshold = parseRegressionTolerance(env.INPUT_MAX_REGRESSION_PP ?? '0', 'max_regression_pp');
+    const rawTaskThreshold = env.INPUT_MAX_TASK_REGRESSION_PP;
+    if (rawTaskThreshold !== undefined && rawTaskThreshold !== '') {
+      taskThreshold = parseRegressionTolerance(rawTaskThreshold, 'max_task_regression_pp');
+    }
+  } catch (error) {
+    return { status: 'invalid', message: error.message };
   }
 
   const workspace = env.GITHUB_WORKSPACE || process.cwd();
@@ -34,8 +39,12 @@ async function evaluate(env) {
   }
 
   const change = changes.skillEffectPercentagePoints;
-  const regression = change < -threshold;
-  const message = `Skill effect changed by ${change.toFixed(2)} percentage points. Allowed decrease: ${threshold}.`;
+  const regressedTasks = taskThreshold === undefined ? [] : comparison.tasks.filter(task => task.skillEffectPercentagePoints < -taskThreshold);
+  const regression = change < -threshold || regressedTasks.length > 0;
+  let message = `Skill effect changed by ${change.toFixed(2)} percentage points. Allowed decrease: ${threshold}.`;
+  if (taskThreshold !== undefined) {
+    message += ' Tasks exceeding the allowed decrease of ' + taskThreshold + ' pp: ' + regressedTasks.length + '.';
+  }
   return { status: regression ? 'regression' : 'pass', change, simulated, message };
 }
 

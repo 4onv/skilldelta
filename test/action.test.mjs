@@ -28,7 +28,7 @@ function savedRun(id, baselinePasses, skillPasses) {
   };
 }
 
-async function invoke(previous, current, threshold) {
+async function invoke(previous, current, threshold, taskThreshold) {
   const directory = await mkdtemp(join(tmpdir(), 'skilldelta-action-'));
   try {
     const output = join(directory, 'outputs');
@@ -40,6 +40,8 @@ async function invoke(previous, current, threshold) {
       INPUT_PREVIOUS: 'previous run.json', INPUT_CURRENT: 'current.json', INPUT_MAX_REGRESSION_PP: threshold,
     };
     if (threshold === undefined) delete env.INPUT_MAX_REGRESSION_PP;
+    if (taskThreshold === undefined) delete env.INPUT_MAX_TASK_REGRESSION_PP;
+    else env.INPUT_MAX_TASK_REGRESSION_PP = taskThreshold;
     const result = spawnSync(process.execPath, [action], { env, encoding: 'utf8', timeout: 10000 });
     assert.ifError(result.error);
     const outputs = Object.fromEntries((await readFile(output, 'utf8')).trimEnd().split('\n').map((line) => line.split('=')));
@@ -95,4 +97,23 @@ test('bad thresholds and malformed evaluation data fail without exposing inputs'
   const malformed = await invoke(before, { unexpected: 'PRIVATE_BODY' });
   assert.equal(malformed.code, 2);
   assert.equal(malformed.outputs.status, 'invalid');
+});
+
+test('the optional task gate catches a decline hidden by improvement on another task', async () => {
+  const before = savedRun('before', 0, 2);
+  const after = savedRun('after', 0, 1);
+  for (const [saved, passes] of [[before, 1], [after, 2]]) {
+    saved.suite.tests.push({ id: 'other-task', sha256: sha256('other-task') });
+    const otherTask = savedRun('unused', 0, passes).results;
+    saved.results.push(...otherTask.map(row => ({ ...row, taskId: 'other-task' })));
+  }
+  assert.equal((await invoke(before, after)).code, 0);
+  const strict = await invoke(before, after, '0', '0');
+  assert.equal(strict.code, 1);
+  assert.equal(strict.outputs.skill_effect_change_pp, '0');
+  assert.match(strict.report, /Tasks exceeding the allowed decrease of 0 pp: 1/);
+  assert.equal((await invoke(before, after, '0', String(100 / 3))).code, 0);
+  assert.equal((await invoke(before, after, '0', 'bad')).outputs.status, 'invalid');
+  after.results.pop();
+  assert.equal((await invoke(before, after, '0', '0')).outputs.status, 'inconclusive');
 });

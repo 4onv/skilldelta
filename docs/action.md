@@ -7,14 +7,15 @@ Use the step after your workflow creates or downloads both evaluation files. Pat
 ```yaml
 - name: Check skill regression
   id: skilldelta
-  uses: 4onv/skilldelta@v0.6.0
+  uses: 4onv/skilldelta@v0.10.0
   with:
     previous: evaluations/previous/results.json
     current: evaluations/current/results.json
     max_regression_pp: '2'
+    max_task_regression_pp: '10'
 ```
 
-The default tolerance is `0`. A decline equal to the tolerance passes. The action writes a job summary and provides these step outputs.
+The overall tolerance defaults to `0`. A decline equal to the tolerance passes. Set `max_task_regression_pp` to fail when any individual task's effect decreases beyond that additional limit. Omitting it keeps the aggregate-only behavior. Both tolerances accept decimals from 0 to 200. The action writes a job summary and provides these step outputs.
 
 | Output | Meaning |
 | --- | --- |
@@ -30,4 +31,4 @@ The action uses the GitHub Actions Node 24 runtime. Use a release commit SHA to 
 
 ## Try it with synthetic data
 
-The repository CI creates two demo runs and exercises successful, regressed, and incomplete comparisons on Ubuntu and Windows. The demo uses generated results to demonstrate the workflow without provider calls. [Action CI workflow](../.github/workflows/ci.yml)
+The repository CI creates two demo runs and exercises successful, regressed, and incomplete comparisons, including a task regression hidden by an unchanged overall effect, on Ubuntu and Windows. The demo uses generated results to demonstrate the workflow without provider calls. [Action CI workflow](../.github/workflows/ci.yml)

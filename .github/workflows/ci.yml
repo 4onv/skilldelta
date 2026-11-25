@@ -64,6 +64,11 @@ jobs:
             import { readFileSync, writeFileSync } from "node:fs";
             const demo = JSON.parse(readFileSync(".skilldelta/after/results.json", "utf8"));
             const passing = demo.results.find((row) => row.condition === "skill" && row.passed);
+            const oppositeBefore = JSON.parse(readFileSync(".skilldelta/before/results.json", "utf8"));
+            const fixed = oppositeBefore.results.find((row) => row.condition === "skill" && row.passed && row.taskId !== passing.taskId);
+            fixed.passed = false;
+            fixed.status = "failed";
+            writeFileSync(".skilldelta/masked-before.json", JSON.stringify(oppositeBefore));
             passing.passed = false;
             passing.status = "failed";
             writeFileSync(".skilldelta/regression.json", JSON.stringify(demo));
@@ -83,6 +88,14 @@ jobs:
         with:
           previous: .skilldelta/before/results.json
           current: .skilldelta/regression.json
+      - name: Reject a decline hidden by an offsetting task improvement
+        id: masked
+        continue-on-error: true
+        uses: ./
+        with:
+          previous: .skilldelta/masked-before.json
+          current: .skilldelta/regression.json
+          max_task_regression_pp: '0'
       - name: Reject an incomplete evaluation
         id: incomplete
         continue-on-error: true
@@ -98,6 +111,9 @@ jobs:
           SIMULATED: ${{ steps.equivalent.outputs.simulated }}
           REGRESSION: ${{ steps.regression.outputs.status }}
           REGRESSION_OUTCOME: ${{ steps.regression.outcome }}
+          MASKED: ${{ steps.masked.outputs.status }}
+          MASKED_DELTA: ${{ steps.masked.outputs.skill_effect_change_pp }}
+          MASKED_OUTCOME: ${{ steps.masked.outcome }}
           INCOMPLETE: ${{ steps.incomplete.outputs.status }}
           INCOMPLETE_OUTCOME: ${{ steps.incomplete.outcome }}
         run: |
@@ -109,6 +125,9 @@ jobs:
             assert.equal(env.SIMULATED, "true");
             assert.equal(env.REGRESSION, "regression");
             assert.equal(env.REGRESSION_OUTCOME, "failure");
+            assert.equal(env.MASKED, "regression");
+            assert.equal(env.MASKED_DELTA, "0");
+            assert.equal(env.MASKED_OUTCOME, "failure");
             assert.equal(env.INCOMPLETE, "inconclusive");
             assert.equal(env.INCOMPLETE_OUTCOME, "failure");'
 
