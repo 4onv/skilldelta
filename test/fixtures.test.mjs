@@ -88,3 +88,28 @@ test('fixture outputs can only replace each declared solution file', () => {
     }
   }
 });
+
+const uiDirectory = new URL('ui-boundaries/', examplesUrl);
+const uiSuiteUrl = new URL('suite.json', uiDirectory);
+const uiSuite = JSON.parse(await readFile(uiSuiteUrl, 'utf8'));
+const uiVariants = JSON.parse(await readFile(new URL('fixtures/ui-boundary-variants.json', import.meta.url), 'utf8'));
+
+test('UI benchmark loads both tasks through the normal suite parser', async () => {
+  const loaded = await loadSuite(fileURLToPath(uiSuiteUrl));
+  assert.deepEqual(loaded.tasks.map(task => task.id), ['latest-search', 'grid-paste']);
+});
+
+for (const task of uiSuite.tasks) {
+  test('UI benchmark ' + task.id + ' accepts the reference and rejects each shortcut', async () => {
+    const { reference, mutants } = uiVariants[task.id];
+    const pass = await evaluate(task, { 'solution.mjs': reference }, uiDirectory);
+    assert.equal(pass.status, 0, pass.stdout + pass.stderr);
+    for (const [label, implementation] of Object.entries(mutants)) {
+      assert.notEqual(implementation, reference, label);
+      const fail = await evaluate(task, { 'solution.mjs': implementation }, uiDirectory);
+      assert.equal(fail.status, 1, label + fail.stdout + fail.stderr);
+      assert.match(fail.stdout, /^not ok \d+/m);
+      assert.doesNotMatch(fail.stdout + fail.stderr, /(SyntaxError|cancelledByParent)/);
+    }
+  });
+}

@@ -18,6 +18,10 @@ const presets = {
     tasks: ['http-boundaries/tasks/retry-after.checks.mjs', 'http-boundaries/tasks/byte-range.checks.mjs',
       'http-boundaries/tasks/ndjson-chunks.checks.mjs'],
   },
+  'ui-boundaries': {
+    suite: 'ui-boundaries/suite.json', skill: 'ui-boundaries/SKILL.md',
+    tasks: ['ui-boundaries/tasks/latest-search.checks.mjs', 'ui-boundaries/tasks/grid-paste.checks.mjs'],
+  },
 };
 const allowed = new Set(['schemaVersion', 'suite', 'skill', 'model', 'endpoint', 'adapter', 'trials', 'seed', 'maxOutputTokens', 'timeoutMs', 'image', 'out']);
 const numeric = { trials: [1, 100], seed: [0, 2147483647], maxOutputTokens: [64, 32768], timeoutMs: [1000, 600000] };
@@ -81,7 +85,7 @@ async function safeDirectory(directory) {
 
 /** Scaffold an editable project without changing existing files or reading secrets. */
 export async function initialize(target = '.', { preset = 'edge-cases' } = {}) {
-  if (!Object.hasOwn(presets, preset)) throw new Error('Choose an init preset: edge-cases or http-boundaries.');
+  if (!Object.hasOwn(presets, preset)) throw new Error(`Choose an init preset: ${Object.keys(presets).join(', ')}.`);
   const { suite, skill, tasks } = presets[preset];
   const templateFiles = [suite, skill, ...tasks];
   const directory = await safeDirectory(target);

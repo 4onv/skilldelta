@@ -14,7 +14,7 @@ import { compareEvaluations, exportAttemptsCsv, listHistory, parseRegressionTole
 import { defaultAdapter } from '../src/provider.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const onboardingHelp = `Project setup:\n  skilldelta init [DIRECTORY] [--preset edge-cases|http-boundaries]\n  skilldelta doctor [--json]        Check configuration, Node, Docker, and key presence (no API calls)\n  skilldelta run [--config FILE]    Load skilldelta.config.json automatically; CLI flags override it\n\nPaths in configuration are relative to the configuration file. Keys stay in SKILLDELTA_API_KEY.\n\n`;
+const onboardingHelp = `Project setup:\n  skilldelta init [DIRECTORY] [--preset edge-cases|http-boundaries|ui-boundaries]\n  skilldelta doctor [--json]        Check configuration, Node, Docker, and key presence (no API calls)\n  skilldelta run [--config FILE]    Load skilldelta.config.json automatically; CLI flags override it\n\nPaths in configuration are relative to the configuration file. Keys stay in SKILLDELTA_API_KEY.\n\n`;
 
 async function selectedConfig(values) {
   if (values.config !== undefined) return path.resolve(values.config);

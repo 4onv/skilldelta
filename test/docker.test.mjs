@@ -156,3 +156,18 @@ test('CLI evaluates the Codex worker subprocess contract and verifies files with
     await rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:250});
   }
 });
+
+test('Docker runs the UI boundaries verifier for references and faulty variants', {
+  skip: process.env.SKILLDELTA_DOCKER_TEST !== '1', timeout: 120000,
+}, async () => {
+  const image = await prepareDocker('node:22-alpine');
+  const variants = JSON.parse(await readFile(new URL('fixtures/ui-boundary-variants.json', import.meta.url), 'utf8'));
+  for (const [id, implementations] of Object.entries(variants)) {
+    const testSource = await readFile(new URL('../examples/ui-boundaries/tasks/' + id + '.checks.mjs', import.meta.url), 'utf8');
+    const run = source => checkFiles({ files: { 'solution.mjs': source }, testSource, timeoutMs: 15000, image });
+    const positive = await run(implementations.reference);
+    assert.equal(positive.status, 'passed', JSON.stringify(positive));
+    const negative = await run(Object.values(implementations.mutants)[0]);
+    assert.equal(negative.status, 'failed', JSON.stringify(negative));
+  }
+});

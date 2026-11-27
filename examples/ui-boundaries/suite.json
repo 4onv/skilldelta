@@ -1,0 +1,31 @@
+{
+  "name": "UI state and paste boundaries",
+  "tasks": [
+    {
+      "id": "latest-search",
+      "title": "Keep search state owned by the latest invocation",
+      "prompt": "Implement the named export createSearch(fetchResults, onChange) in solution.mjs. Return an object with an async search(query) method. Valid callers supply two functions and nonempty string queries. Each invocation must synchronously publish {query, status:'pending', results:[], error:null}, then start fetchResults(query) immediately. On success publish {query, status:'success', results, error:null} with the returned array. If fetchResults throws or rejects, publish {query, status:'error', results:[], error:'Search failed'}. Only the latest invocation of this instance may publish a settled state, even when two invocations have the same query value or finish out of order. Every search promise must resolve after that invocation settles, including stale completions and failures. Instances are independent. Do not share request ownership across instances. onChange is synchronous and does not throw. There are no cancel, retry, caching, or debounce requirements.",
+      "starter": {
+        "solution.mjs": "export function createSearch(fetchResults, onChange) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": [
+        "solution.mjs"
+      ],
+      "testFile": "tasks/latest-search.checks.mjs",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "grid-paste",
+      "title": "Plan an atomic plain-text grid paste",
+      "prompt": "Implement the named export planPaste(text, height, width, originRow, originColumn) in solution.mjs. Return {ok:true,writes} for a valid paste where writes is an array of {row,column,value} in row-major order with zero-based indices. Return {ok:false,writes:[]} for any invalid input or if any target falls outside the grid. height and width must be positive safe integers. The origin must be a pair of nonnegative safe integers within the grid, including when text is empty. text must be a string. Empty text yields zero writes. Accept unquoted tab-separated text with LF or CRLF line separators, including a mixture. Reject bare CR. Ignore one final line separator, but keep any empty records before it. Each explicit blank field writes an empty string. An omitted field in a short record produces no write. Copy other characters, including spaces and quotes, literally. Treat quoted TSV dialects as outside this contract. The operation is all or nothing.",
+      "starter": {
+        "solution.mjs": "export function planPaste(text, height, width, originRow, originColumn) {\n  throw new Error('Not implemented');\n}\n"
+      },
+      "editableFiles": [
+        "solution.mjs"
+      ],
+      "testFile": "tasks/grid-paste.checks.mjs",
+      "timeoutMs": 10000
+    }
+  ]
+}

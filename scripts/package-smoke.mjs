@@ -45,6 +45,12 @@ try {
   const httpConfig = JSON.parse(await readFile(path.join(http, 'skilldelta.config.json'), 'utf8'));
   assert.equal(httpConfig.suite, 'skilldelta/http-boundaries/suite.json');
   assert.match(run(bin, ['run','--model','package-test','--endpoint','https://example.com/v1/chat/completions','--dry-run'], http), /18 provider requests[\s\S]*Validation passed/);
+  const ui = path.join(directory, 'ui');
+  run(bin, ['init', ui, '--preset', 'ui-boundaries']);
+  const uiConfig = JSON.parse(await readFile(path.join(ui, 'skilldelta.config.json'), 'utf8'));
+  assert.equal(uiConfig.suite, 'skilldelta/ui-boundaries/suite.json');
+  assert.equal(uiConfig.skill, 'skilldelta/ui-boundaries/SKILL.md');
+  assert.match(run(bin, ['run','--model','package-test','--endpoint','https://example.com/v1/chat/completions','--dry-run'], ui), /12 provider requests[\s\S]*Validation passed/);
   assert.ok(!packed.files.some(entry => entry.path.startsWith('test/')), 'Reference implementations must stay out of the package.');
   const readiness = JSON.parse(run(bin, ['doctor','--json'], project, [0,2]));
   for (const name of ['node','config','suite','skill']) assert.equal(readiness.checks.find(check => check.name === name)?.status, 'pass', `Installed doctor failed: ${name}`);

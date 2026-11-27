@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.0 — 2026-11-27
+
+- Add the installable `ui-boundaries` preset for stale request state and atomic grid paste. Exercise both verifiers against hand-written reference and faulty solutions and validate the preset after a clean offline install.
+
 ## 0.10.0 — 2026-11-25
 
 - Report each task's change in measured skill effect. Add an optional task-level tolerance to the saved comparison CLI and GitHub Action so aggregate totals cannot hide an individual task's decline.

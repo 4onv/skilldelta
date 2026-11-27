@@ -13,14 +13,14 @@ SkillDelta is a small, dependency-free CLI for paired evaluations of coding inst
 - **Isolated verification:** live generated code is tested in a resource-limited Docker container without network access or API credentials.
 - **Portable reports:** one HTML file, no server, account, analytics, or external assets.
 
-Run paired evaluations through a chat-completions endpoint, the bundled **Codex CLI worker**, or your own HTTP worker. Each path uses the same held-out tests, resumable checkpoints, and saved-run regression checks. [Connect Codex](docs/adapters.md#run-the-codex-cli-worker) · [Benchmark tasks](examples/http-boundaries/README.md) · [Action usage](docs/action.md)
+Run paired evaluations through a chat-completions endpoint, the bundled **Codex CLI worker**, or your own HTTP worker. Each path uses the same held-out tests, resumable checkpoints, and saved-run regression checks. [Connect Codex](docs/adapters.md#run-the-codex-cli-worker) · [UI benchmarks](examples/ui-boundaries/README.md) · [HTTP benchmarks](examples/http-boundaries/README.md) · [Action usage](docs/action.md)
 
 ## Try it in a minute
 
-Install Node.js 22 or newer and download `4onv-skilldelta-0.10.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.10.0)
+Install Node.js 22 or newer and download `4onv-skilldelta-0.11.0.tgz`. Run the following from the download directory. [Node.js](https://nodejs.org/) · [GitHub release](https://github.com/4onv/skilldelta/releases/tag/v0.11.0)
 
 ```sh
-npm install -g ./4onv-skilldelta-0.10.0.tgz
+npm install -g ./4onv-skilldelta-0.11.0.tgz
 skilldelta demo
 ```
 
@@ -51,7 +51,7 @@ cd my-evaluation
 
 This creates `skilldelta.config.json` and a `skilldelta/` directory containing a starter skill and three executable tasks. Existing files are not overwritten. Set `model` and `endpoint` in the config; both start as `null` so you choose the provider explicitly. If your provider needs authentication, set `SKILLDELTA_API_KEY` in your shell. Keep credentials out of config files and command-line arguments.
 
-Use `skilldelta init http-evaluation --preset http-boundaries` to scaffold the retry, range, and streaming tasks instead.
+Use `skilldelta init ui-evaluation --preset ui-boundaries` for stale search results and grid paste, or `skilldelta init http-evaluation --preset http-boundaries` for retry, range, and streaming tasks.
 
 ```sh
 skilldelta doctor
